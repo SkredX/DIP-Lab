@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #FAFAF7;
+  --surface: #FFFFFF;
+  --text: #1B1B1F;
+  --muted: #6B6F76;
+  --accent: #0071E3;
+  --secondary: #F0895B;
+  --border: #E6E6E1;
+}
+
+.dark {
+  --bg: #111214;
+  --surface: #1A1C1F;
+  --text: #ECECEF;
+  --muted: #8E929B;
+  --accent: #0A84FF;
+  --secondary: #F49D75;
+  --border: #2A2D32;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(60vw 45vh at 12% -5%, rgba(10,132,255,.16), transparent 70%),
+    radial-gradient(50vw 40vh at 92% 8%, rgba(175,82,222,.12), transparent 70%),
+    radial-gradient(55vw 45vh at 50% 105%, rgba(255,159,10,.10), transparent 70%);
+  background-attachment: fixed;
+}
+.dark body { background-image:
+    radial-gradient(60vw 45vh at 12% -5%, rgba(10,132,255,.28), transparent 70%),
+    radial-gradient(50vw 40vh at 92% 8%, rgba(191,90,242,.20), transparent 70%),
+    radial-gradient(55vw 45vh at 50% 105%, rgba(255,159,10,.12), transparent 70%); }
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.4);
+}
+
+/* KaTeX tweaks for crisp integration */
+.katex {
+  font-size: 1.05em;
+  text-rendering: geometricPrecision;
+}
+.katex-display {
+  margin: 0.6em 0 !important;
+}
+
+/* Range input styling */
+input[type=range] {
+  -webkit-appearance: none;
+  background: transparent;
+}
+input[type=range]:focus {
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #0071E3;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  margin-top: -6px;
+  transition: transform 0.1s ease;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: #E6E6E1;
+  border-radius: 9999px;
+}
+.dark input[type=range]::-webkit-slider-runnable-track {
+  background: #2A2D32;
+}
+
+/* ---------- Apple-style materials ----------
+   Glass sits on the browse/navigation layer only (landing cards, top bar, search).
+   Lab canvases stay on solid surfaces so plots keep full legibility. */
+:root { --ease: cubic-bezier(.32,.72,0,1); --glass: rgba(255,255,255,.55); --glass-line: rgba(255,255,255,.7); --glass-shadow: 0 8px 30px rgba(0,0,0,.06); }
+.dark { --glass: rgba(44,46,52,.5); --glass-line: rgba(255,255,255,.10); --glass-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: .5px solid var(--glass-line);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.glass-card {
+  @apply glass relative flex flex-col justify-between p-5 rounded-[22px];
+  transition: transform .45s var(--ease), box-shadow .45s var(--ease);
+}
+.glass-card::after { /* soft specular highlight */
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,.35), transparent 40%); opacity: .5;
+}
+.glass-card:hover { transform: translateY(-3px) scale(1.01); box-shadow: 0 18px 44px rgba(0,0,0,.12); }
+.glass-card:active { transform: scale(.985); }
+header, nav.topbar { -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Accessibility fallbacks: honour Reduce Transparency / Increase Contrast / Reduce Motion */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .glass { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; border: 1px solid var(--border); }
+  .glass-card::after { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; } }
