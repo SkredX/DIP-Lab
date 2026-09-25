@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { TopBar } from '../components/shell/TopBar';
 import { Footer } from '../components/shell/Footer';
 import { TopicCard } from '../components/shell/TopicCard';
+import { Hero } from '../components/ui/tailwind-css-background-snippet';
 import { UNITS, TOPICS } from '../content/registry';
 import { Search, Sparkles, BookOpen, Layers, Cpu, Compass } from 'lucide-react';
 
@@ -25,7 +26,14 @@ export const LandingPage: React.FC = () => {
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col">
         {/* Hero Section */}
-        <section className="text-center max-w-3xl mx-auto space-y-4 mb-12">
+        <section className="relative text-center max-w-3xl mx-auto space-y-4 mb-12">
+          {/* Decorative radial-gradient backdrop, dark mode only — the light-mode
+              glow already comes from the soft radial gradients in globals.css */}
+          <div className="hidden dark:block absolute inset-x-[-9999px] top-[-96px] h-[420px] -z-10 overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 opacity-70 [mask-image:linear-gradient(to_bottom,#000_60%,transparent)]">
+              <Hero />
+            </div>
+          </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass text-accent text-xs font-semibold tracking-wide">
             <Sparkles className="w-3.5 h-3.5" />
             Interactive Visual Learning Platform

@@ -126,6 +126,27 @@ export function generateProceduralImage(preset: ProceduralPreset, size: number =
   return { w, h, data, L: 256 };
 }
 
+/** Shared step: draw a loaded <img>, downscale to max dimension, and flatten to grayscale. */
+function imageElementToGray(img: HTMLImageElement, maxSize: number): GrayImage {
+  let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  if (w > maxSize || h > maxSize) {
+    if (w > h) { h = Math.round((h * maxSize) / w); w = maxSize; }
+    else { w = Math.round((w * maxSize) / h); h = maxSize; }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to get canvas 2d context');
+  ctx.drawImage(img, 0, 0, w, h);
+  const rgba = ctx.getImageData(0, 0, w, h).data;
+  const grayData = new Uint8ClampedArray(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const idx = i * 4;
+    grayData[i] = Math.round(0.299 * rgba[idx] + 0.587 * rgba[idx + 1] + 0.114 * rgba[idx + 2]);
+  }
+  return { w, h, data: grayData, L: 256 };
+}
+
 /** Loads an uploaded image file, downscales to max dimension, and converts to grayscale */
 export function loadUserImage(file: File, maxSize: number = 256): Promise<GrayImage> {
   return new Promise((resolve, reject) => {
@@ -133,23 +154,8 @@ export function loadUserImage(file: File, maxSize: number = 256): Promise<GrayIm
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        let w = img.width, h = img.height;
-        if (w > maxSize || h > maxSize) {
-          if (w > h) { h = Math.round((h * maxSize) / w); w = maxSize; }
-          else { w = Math.round((w * maxSize) / h); h = maxSize; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { reject(new Error('Failed to get canvas 2d context')); return; }
-        ctx.drawImage(img, 0, 0, w, h);
-        const rgba = ctx.getImageData(0, 0, w, h).data;
-        const grayData = new Uint8ClampedArray(w * h);
-        for (let i = 0; i < w * h; i++) {
-          const idx = i * 4;
-          grayData[i] = Math.round(0.299 * rgba[idx] + 0.587 * rgba[idx + 1] + 0.114 * rgba[idx + 2]);
-        }
-        resolve({ w, h, data: grayData, L: 256 });
+        try { resolve(imageElementToGray(img, maxSize)); }
+        catch (err) { reject(err); }
       };
       img.onerror = reject;
       img.src = e.target?.result as string;
@@ -158,3 +164,33 @@ export function loadUserImage(file: File, maxSize: number = 256): Promise<GrayIm
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * Loads a real reference photo bundled with the app (from /public), downscales
+ * it, and converts it to grayscale — same pipeline as an uploaded photo, just
+ * sourced from a URL instead of a File.
+ */
+export function loadImageFromUrl(url: string, maxSize: number = 256): Promise<GrayImage> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try { resolve(imageElementToGray(img, maxSize)); }
+      catch (err) { reject(err); }
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+export interface RealSample { id: string; name: string; description: string; url: string }
+
+/** Real reference photographs bundled with the app, shown alongside the generated presets. */
+export const REAL_SAMPLES: RealSample[] = [
+  { id: 'rose', name: 'Rose', description: 'Close-up rose flowers with soft, blurred petals and background.', url: '/samples/rose.jpg' },
+  { id: 'taj-mahal', name: 'Taj Mahal', description: 'Wide architectural shot — domes, minarets and a long reflecting pool.', url: '/samples/taj-mahal.jpg' },
+  { id: 'lamborghini', name: 'Sports car', description: 'A car on a plain studio background — flat, even lighting.', url: '/samples/lamborghini.jpg' },
+  { id: 'bicycle', name: 'Bicycle', description: 'A bicycle against a textured wall, with strong directional shadow.', url: '/samples/bicycle.jpg' },
+  { id: 'butterfly', name: 'Butterfly', description: 'A high-contrast butterfly on a near-black background — good for thresholding.', url: '/samples/butterfly.jpg' },
+  { id: 'swan', name: 'Swan', description: 'A bright white swan on almost-black water — strong bimodal brightness.', url: '/samples/swan.jpg' },
+];

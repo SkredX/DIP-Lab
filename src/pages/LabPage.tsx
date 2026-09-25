@@ -10,6 +10,7 @@ import { ProceduralPreset, generateProceduralImage } from '../engine/image/proce
 import { GrayImage } from '../engine/image/types';
 import { useAppStore } from '../state/store';
 import { Step } from '../engine/math/types';
+import { getParamHelp } from '../utils/paramHelp';
 
 export const LabPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -64,9 +65,12 @@ export const LabPage: React.FC = () => {
     return 'mountain';
   }, [slug]);
 
-  const [currentPreset, setCurrentPreset] = useState<ProceduralPreset | 'custom'>(defaultPreset);
+  const [currentPreset, setCurrentPreset] = useState<ProceduralPreset | 'custom' | string>(defaultPreset);
   const [image, setImage] = useState<GrayImage>(() => generateProceduralImage(defaultPreset, 144));
   const [customThumb, setCustomThumb] = useState<string | null>(null);
+  // Tracks whether the pending onCustomImageLoaded call came from picking a bundled
+  // real reference photo (vs. an actual file upload), so we can label it correctly.
+  const pendingRealSample = React.useRef<string | null>(null);
 
   // Reset image when default preset changes
   useEffect(() => {
@@ -81,8 +85,17 @@ export const LabPage: React.FC = () => {
     setCustomThumb(null);
   };
 
+  const handleSelectRealSample = (id: string) => {
+    pendingRealSample.current = id;
+  };
+
   const handleCustomImage = (customImg: GrayImage) => {
-    setCurrentPreset('custom');
+    if (pendingRealSample.current) {
+      setCurrentPreset(`real:${pendingRealSample.current}`);
+      pendingRealSample.current = null;
+    } else {
+      setCurrentPreset('custom');
+    }
     setImage(customImg);
   };
 
@@ -143,6 +156,7 @@ export const LabPage: React.FC = () => {
             currentPreset={currentPreset}
             onSelectPreset={handleSelectPreset}
             onCustomImageLoaded={handleCustomImage}
+            onSelectRealSample={handleSelectRealSample}
           />
 
           <div className="pt-2 border-t border-border-light dark:border-border-dark space-y-3">
@@ -175,6 +189,7 @@ export const LabPage: React.FC = () => {
                 );
               }
               if (p.kind === 'select' && p.options) {
+                const helpText = getParamHelp(p.label, p.id);
                 return (
                   <div key={p.id} className="space-y-1.5 py-1">
                     <label
@@ -183,6 +198,9 @@ export const LabPage: React.FC = () => {
                     >
                       {p.label}
                     </label>
+                    {helpText && (
+                      <p className="text-[11px] text-text-muted -mt-1">{helpText}</p>
+                    )}
                     <select
                       id={p.id}
                       value={params[p.id] ?? p.default}

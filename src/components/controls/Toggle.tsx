@@ -1,10 +1,12 @@
 import React from 'react';
+import { getParamHelp } from '../../utils/paramHelp';
 
 interface ToggleProps {
   id: string;
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  /** Plain-English explanation of what this switch does. Auto-detected from the label when omitted. */
   description?: string;
 }
 
@@ -15,14 +17,15 @@ export const Toggle: React.FC<ToggleProps> = ({
   onChange,
   description,
 }) => {
+  const helpText = description ?? getParamHelp(label, id);
   return (
     <div className="flex items-center justify-between py-1.5 gap-4">
       <div className="flex flex-col">
         <label htmlFor={id} className="text-xs font-medium text-text-light dark:text-text-dark cursor-pointer">
           {label}
         </label>
-        {description && (
-          <span className="text-[11px] text-text-muted">{description}</span>
+        {helpText && (
+          <span className="text-[11px] text-text-muted">{helpText}</span>
         )}
       </div>
 

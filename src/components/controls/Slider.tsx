@@ -1,6 +1,8 @@
 import React from 'react';
+import { Info } from 'lucide-react';
 import { useAppStore } from '../../state/store';
 import { plainLabel } from '../../utils/plainLabel';
+import { getParamHelp } from '../../utils/paramHelp';
 
 interface SliderProps {
   id: string;
@@ -13,6 +15,8 @@ interface SliderProps {
   unit?: string;
   onChange: (val: number) => void;
   advancedOnly?: boolean;
+  /** Plain-English explanation of what this parameter does. Auto-detected from the label when omitted. */
+  help?: string;
 }
 
 export const Slider: React.FC<SliderProps> = ({
@@ -25,6 +29,7 @@ export const Slider: React.FC<SliderProps> = ({
   defaultValue,
   unit = '',
   onChange,
+  help,
 }) => {
   const handleDoubleClick = () => {
     if (defaultValue !== undefined) {
@@ -34,14 +39,25 @@ export const Slider: React.FC<SliderProps> = ({
 
   const { viewMode } = useAppStore();
   const shownLabel = plainLabel(label, viewMode);
+  const helpText = help ?? getParamHelp(label, id);
 
   const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
 
   return (
     <div className="space-y-1.5 py-1">
       <div className="flex items-center justify-between text-xs">
-        <label htmlFor={id} className="font-medium text-text-light dark:text-text-dark">
+        <label htmlFor={id} className="font-medium text-text-light dark:text-text-dark inline-flex items-center gap-1">
           {shownLabel}
+          {helpText && (
+            <span
+              tabIndex={0}
+              title={helpText}
+              aria-label={helpText}
+              className="inline-flex text-text-muted hover:text-accent focus:text-accent cursor-help"
+            >
+              <Info className="w-3 h-3" />
+            </span>
+          )}
         </label>
         <div
           onDoubleClick={handleDoubleClick}
