@@ -109,6 +109,7 @@ export const LandingPage: React.FC = () => {
                       slug={topic.slug}
                       title={topic.title}
                       hook={topic.hook}
+                      unitId={unit.id}
                       unitTitle={unit.title}
                       order={topic.order}
                       difficulty={topic.difficulty}

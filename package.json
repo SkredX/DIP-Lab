@@ -10,11 +10,15 @@
     "test": "node --test test/engine.test.mjs"
   },
   "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^13.4.3",
     "katex": "^0.16.11",
     "lucide-react": "^0.475.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
+    "tailwind-merge": "^3.7.0",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
