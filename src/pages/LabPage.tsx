@@ -59,21 +59,26 @@ export const LabPage: React.FC = () => {
     if (slug === 'histogram-equalization') return 'lowContrast';
     if (slug === 'checker' || slug === 'digital-image') return 'checker';
     if (slug === 'global-histogram-processing') return 'uneven';
-    return 'lowContrast';
+    if (slug === 'grayscale-image' || slug === 'pixel-intensity') return 'portrait';
+    if (slug === 'histogram-matching' || slug === 'histogram-specification' || slug === 'cdf-matching') return 'bimodal';
+    return 'mountain';
   }, [slug]);
 
   const [currentPreset, setCurrentPreset] = useState<ProceduralPreset | 'custom'>(defaultPreset);
-  const [image, setImage] = useState<GrayImage>(() => generateProceduralImage(defaultPreset, 128));
+  const [image, setImage] = useState<GrayImage>(() => generateProceduralImage(defaultPreset, 144));
+  const [customThumb, setCustomThumb] = useState<string | null>(null);
 
   // Reset image when default preset changes
   useEffect(() => {
     setCurrentPreset(defaultPreset);
-    setImage(generateProceduralImage(defaultPreset, 128));
+    setImage(generateProceduralImage(defaultPreset, 144));
+    setCustomThumb(null);
   }, [defaultPreset]);
 
   const handleSelectPreset = (preset: ProceduralPreset) => {
     setCurrentPreset(preset);
-    setImage(generateProceduralImage(preset, 128));
+    setImage(generateProceduralImage(preset, 144));
+    setCustomThumb(null);
   };
 
   const handleCustomImage = (customImg: GrayImage) => {

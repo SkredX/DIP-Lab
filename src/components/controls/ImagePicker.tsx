@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
-import { PRESETS, ProceduralPreset, loadUserImage } from '../../engine/image/procedural';
+import React, { useRef, useState } from 'react';
+import { PRESETS, ProceduralPreset, generateProceduralImage, loadUserImage } from '../../engine/image/procedural';
 import { GrayImage } from '../../engine/image/types';
-import { Upload, Image as ImageIcon } from 'lucide-react';
+import { Upload, Image as ImageIcon, ChevronDown } from 'lucide-react';
+import { useAppStore } from '../../state/store';
 
 interface ImagePickerProps {
   currentPreset: ProceduralPreset | 'custom';
@@ -9,76 +10,104 @@ interface ImagePickerProps {
   onCustomImageLoaded: (img: GrayImage) => void;
 }
 
-export const ImagePicker: React.FC<ImagePickerProps> = ({
-  currentPreset,
-  onSelectPreset,
-  onCustomImageLoaded,
-}) => {
+// Small live thumbnail rendered straight from the procedural generator, so people
+// pick a photo by recognising it — not by reading its filename.
+const Thumb: React.FC<{ id: ProceduralPreset }> = ({ id }) => {
+  const [url, setUrl] = useState<string | null>(null);
+  React.useEffect(() => {
+    const img = generateProceduralImage(id, 48);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.w; canvas.height = img.h;
+    const ctx = canvas.getContext('2d')!;
+    const id2 = ctx.createImageData(img.w, img.h);
+    for (let i = 0; i < img.data.length; i++) { id2.data[i * 4] = id2.data[i * 4 + 1] = id2.data[i * 4 + 2] = img.data[i]; id2.data[i * 4 + 3] = 255; }
+    ctx.putImageData(id2, 0, 0);
+    setUrl(canvas.toDataURL());
+  }, [id]);
+  return url ? <img src={url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-surface-mutedLight dark:bg-surface-mutedDark" />;
+};
+
+export const ImagePicker: React.FC<ImagePickerProps> = ({ currentPreset, onSelectPreset, onCustomImageLoaded }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [morePatterns, setMorePatterns] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { viewMode } = useAppStore();
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFile = async (file?: File | null) => {
     if (!file) return;
-
-    try {
-      const customImg = await loadUserImage(file, 256);
-      onCustomImageLoaded(customImg);
-    } catch (err) {
-      console.error('Failed to load user image:', err);
-      alert('Could not load image. Please try a standard JPG/PNG file.');
-    }
+    if (!file.type.startsWith('image/')) { setError('Please choose an image file (JPG, PNG, etc).'); return; }
+    setError(null);
+    try { onCustomImageLoaded(await loadUserImage(file, 256)); }
+    catch { setError('Could not open that image — please try a different photo.'); }
   };
 
+  const photoPresets = PRESETS.filter((p) => p.photo);
+  const patternPresets = PRESETS.filter((p) => !p.photo);
+
   return (
-    <div className="space-y-2 py-2">
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-medium text-text-light dark:text-text-dark flex items-center gap-1.5">
-          <ImageIcon className="w-3.5 h-3.5 text-accent" />
-          Sample Image
+    <div className="space-y-3 py-2">
+      {/* Prominent upload call-to-action */}
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]); }}
+        className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 border-dashed transition-all text-left ${
+          dragOver ? 'border-accent bg-accent/10' : 'border-accent/40 hover:border-accent hover:bg-accent/5'
+        }`}
+      >
+        <span className="flex-shrink-0 w-9 h-9 rounded-xl bg-accent/15 text-accent flex items-center justify-center"><Upload className="w-4 h-4" /></span>
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold text-text-light dark:text-text-dark">Use your own photo</span>
+          <span className="block text-[11px] text-text-muted truncate">Drop an image here, or tap to choose one from your device</span>
         </span>
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1 text-[11px] font-semibold text-accent hover:underline"
-        >
-          <Upload className="w-3 h-3" />
-          Upload Image
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileUpload}
-        />
+      </button>
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+      {error && <p className="text-[11px] text-secondary px-1">{error}</p>}
+
+      <div className="flex items-center gap-1.5 text-xs font-medium text-text-light dark:text-text-dark px-0.5">
+        <ImageIcon className="w-3.5 h-3.5 text-accent" /> {viewMode === 'beginner' ? 'Or pick an example photo' : 'Sample images'}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {photoPresets.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            title={preset.description}
+            onClick={() => onSelectPreset(preset.id)}
+            className={`group rounded-xl overflow-hidden border text-left transition-all ${
+              currentPreset === preset.id ? 'border-accent ring-2 ring-accent/40' : 'border-border-light dark:border-border-dark hover:border-accent/50'
+            }`}
+          >
+            <div className="aspect-[4/3] w-full overflow-hidden bg-surface-mutedLight dark:bg-surface-mutedDark"><Thumb id={preset.id} /></div>
+            <div className={`px-1.5 py-1 text-[10px] font-medium truncate ${currentPreset === preset.id ? 'text-accent' : 'text-text-muted'}`}>{preset.name}</div>
+          </button>
+        ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
-        {PRESETS.map((preset) => {
-          const isSelected = currentPreset === preset.id;
-          return (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => onSelectPreset(preset.id)}
-              className={`p-2 rounded-xl text-left border transition-all text-[11px] ${
-                isSelected
-                  ? 'border-accent bg-accent/10 font-semibold text-accent'
-                  : 'border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark text-text-muted hover:border-accent/40'
-              }`}
-            >
-              <div className="truncate font-medium">{preset.name.split(' (')[0]}</div>
-              <div className="text-[9px] text-text-muted truncate mt-0.5 opacity-80">
-                {preset.id}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      {currentPreset === 'custom' && (
-        <div className="text-[11px] text-accent font-medium px-2 py-1 rounded-lg bg-accent/10">
-          Using custom uploaded image (downscaled to ≤256px)
+      {viewMode === 'advanced' && (
+        <div className="pt-1">
+          <button type="button" onClick={() => setMorePatterns((v) => !v)} className="flex items-center gap-1 text-[11px] font-semibold text-text-muted hover:text-accent">
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${morePatterns ? 'rotate-180' : ''}`} /> Test patterns (gradient, checkerboard, ripples)
+          </button>
+          {morePatterns && (
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {patternPresets.map((preset) => (
+                <button key={preset.id} type="button" title={preset.description} onClick={() => onSelectPreset(preset.id)}
+                  className={`rounded-xl overflow-hidden border text-left transition-all ${currentPreset === preset.id ? 'border-accent ring-2 ring-accent/40' : 'border-border-light dark:border-border-dark hover:border-accent/50'}`}>
+                  <div className="aspect-[4/3] w-full overflow-hidden bg-surface-mutedLight dark:bg-surface-mutedDark"><Thumb id={preset.id} /></div>
+                  <div className={`px-1.5 py-1 text-[10px] font-medium truncate ${currentPreset === preset.id ? 'text-accent' : 'text-text-muted'}`}>{preset.name}</div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+      )}
+
+      {currentPreset === 'custom' && (
+        <div className="text-[11px] text-accent font-medium px-2 py-1.5 rounded-lg bg-accent/10">Using your uploaded photo (resized to fit)</div>
       )}
     </div>
   );

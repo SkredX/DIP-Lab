@@ -1,4 +1,6 @@
 import React from 'react';
+import { useAppStore } from '../../state/store';
+import { plainLabel } from '../../utils/plainLabel';
 
 interface SliderProps {
   id: string;
@@ -30,13 +32,16 @@ export const Slider: React.FC<SliderProps> = ({
     }
   };
 
+  const { viewMode } = useAppStore();
+  const shownLabel = plainLabel(label, viewMode);
+
   const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
 
   return (
     <div className="space-y-1.5 py-1">
       <div className="flex items-center justify-between text-xs">
         <label htmlFor={id} className="font-medium text-text-light dark:text-text-dark">
-          {label}
+          {shownLabel}
         </label>
         <div
           onDoubleClick={handleDoubleClick}
@@ -60,7 +65,7 @@ export const Slider: React.FC<SliderProps> = ({
           onDoubleClick={handleDoubleClick}
           className="w-full h-2 rounded-lg cursor-pointer accent-accent"
           style={{
-            background: `linear-gradient(to right, #5B5BF0 0%, #5B5BF0 ${percentage}%, #E6E6E1 ${percentage}%, #E6E6E1 100%)`,
+            background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${percentage}%, var(--border) ${percentage}%, var(--border) 100%)`,
           }}
         />
       </div>
