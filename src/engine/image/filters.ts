@@ -65,6 +65,48 @@ export function addNoise(img: GrayImage, sigma: number, seed = 7): GrayImage {
   return { ...img, data: out };
 }
 
+/** Sum of squared differences between two equal-size patches — a noise-robust similarity score. */
+export function patchSSD(a: number[][], b: number[][]): number {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) for (let j = 0; j < a[i].length; j++) { const d = a[i][j] - b[i][j]; s += d * d; }
+  return s;
+}
+
+/**
+ * Bilateral filter: like Gaussian smoothing, but each neighbour's weight is the product of
+ * a spatial weight (distance only) and a range weight (intensity similarity only).
+ * Pixels across a strong edge get a tiny range weight, so the edge survives the smoothing.
+ */
+export function bilateralFilter(img: GrayImage, radius: number, sigmaS: number, sigmaR: number): GrayImage {
+  const { w, h, data } = img;
+  const out = new Uint8ClampedArray(w * h);
+  const r = Math.max(1, Math.round(radius));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const centre = data[y * w + x];
+      let acc = 0, wsum = 0;
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          const yy = Math.min(h - 1, Math.max(0, y + dy)), xx = Math.min(w - 1, Math.max(0, x + dx));
+          const nv = data[yy * w + xx];
+          const ws = Math.exp(-(dx * dx + dy * dy) / (2 * sigmaS * sigmaS));
+          const wr = Math.exp(-((nv - centre) ** 2) / (2 * sigmaR * sigmaR));
+          const wgt = ws * wr;
+          acc += wgt * nv; wsum += wgt;
+        }
+      }
+      out[y * w + x] = Math.round(wsum > 0 ? acc / wsum : centre);
+    }
+  }
+  return { ...img, data: out };
+}
+
+/** Spatial weight w(i,j) = exp(-d²/2σs²) for a single neighbour offset — used to show one term of the bilateral sum. */
+export const spatialWeight = (dx: number, dy: number, sigmaS: number) => Math.exp(-(dx * dx + dy * dy) / (2 * sigmaS * sigmaS));
+
+/** Range weight φ(i,j) = exp(-(Δintensity)²/2σr²) for a single neighbour — used to show one term of the bilateral sum. */
+export const rangeWeight = (centre: number, neighbour: number, sigmaR: number) => Math.exp(-((neighbour - centre) ** 2) / (2 * sigmaR * sigmaR));
+
 /** Distance (px) over which a row goes from 10% to 90% of its range around the strongest edge */
 export function edgeWidth(row: ArrayLike<number>): number {
   let bi = 0, bd = 0;

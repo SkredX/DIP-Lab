@@ -19,6 +19,8 @@ const UNIT_STYLE: Record<string, { gradient: 'gray' | 'purple' | 'green' | 'oran
   'digital-image-fundamentals': { gradient: 'blue', color: '#0071E3' },
   'histogram-processing': { gradient: 'purple', color: '#8B5CF6' },
   'spatial-filtering': { gradient: 'green', color: '#10B981' },
+  'bilateral-filtering': { gradient: 'orange', color: '#F0895B' },
+  'image-formation-enhancement': { gradient: 'gray', color: '#64748B' },
 };
 
 const DIFFICULTY_LABEL = ['Intro', 'Intro', 'Intermediate', 'Advanced'];

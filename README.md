@@ -43,6 +43,44 @@ Built according to the architectural specification in `guide.md`.
 19. **Global Histogram Processing** (`global-histogram-processing`): Limitations of global LUTs on uneven lighting scenes and washout artifacts.
 20. **Local vs. Global (CLAHE)** (`local-vs-global`): Adaptive tile histogram equalization, clip limit redistribution, and bilinear interpolation blending.
 
+### Unit 3 — Spatial Filtering
+21. **Spatial Filtering** (`spatial-filtering`): Output pixels computed from a pixel *and* its neighbours via a kernel, not the pixel alone.
+22. **Neighborhood Processing** (`neighborhood-processing`): Sliding an n×n window over the image so local context — not just the single pixel — decides the result.
+23. **Kernel / Mask** (`kernel-mask`): A small weight matrix; zero-sum vs. unit-sum kernels and what each implies about brightness/high-pass behaviour.
+24. **Convolution / Filtering** (`convolution-filtering`): Multiply–add at a probed pixel, correlation vs. true (kernel-flipped) convolution.
+25. **Box Filter** (`box-filter`): Every neighbour weighted equally — the simplest possible blur, with/without 1/n² normalization.
+26. **Mean / Averaging Filter** (`mean-filter`): Neighbourhood averaging to cancel independent noise; live PSNR climb as kernel size grows.
+27. **Smoothing** (`smoothing`): Low-pass filtering in general — box vs. Gaussian denoising compared on identical noise.
+28. **Gaussian Filtering** (`gaussian-filtering`): Distance-weighted neighbours via a bell-shaped kernel; σ controls reach.
+29. **Gaussian Function** (`gaussian-function`): The bell curve itself — peak value, FWHM, and its derivative (slope).
+30. **Gaussian Weighting** (`gaussian-weighting`): Compute one kernel entry from Δx, Δy and σ — "greater distance ⇒ smaller weight."
+31. **Gaussian Smoothing** (`gaussian-smoothing`): σ-tunable denoising; separability into two 1-D passes; composing two Gaussian blurs.
+32. **Edge Blurring** (`edge-blurring`): The cost of smoothing — a sharp step edge becomes a ramp, measured via 10–90% rise distance.
+
+### Unit 4 — Bilateral Filtering
+33. **Bilateral Filtering** (`bilateral-filtering`): Fixes Unit 3's edge-blurring problem by combining a spatial weight *and* an intensity-similarity weight.
+34. **Spatial Weight** (`spatial-weight`): "How far away is this neighbour?" — the purely geometric half of the bilateral weight, identical to Gaussian filtering.
+35. **Range / Intensity Weight** (`range-weight`): "How similar is this neighbour's brightness?" — the new ingredient that lets the filter sense edges.
+36. **Spatial Standard Deviation σₛ** (`spatial-sigma`): How far the spatial weight reaches, in pixels.
+37. **Range Standard Deviation σᵣ** (`range-sigma`): How tolerant the filter is to brightness gaps; σᵣ → ∞ collapses bilateral filtering into plain Gaussian filtering.
+38. **Bilateral Weight** (`bilateral-weight`): The product w(i,j)·φ(i,j) — a neighbour must be close *and* similar to count.
+39. **Edge-Preserving Smoothing** (`edge-preserving-smoothing`): Side-by-side with Unit 3's edge-blurring lab — the same edge now survives filtering.
+40. **Patch-Based Comparison** (`patch-based-comparison`): Comparing small neighbourhoods (SSD) instead of single noisy pixels for a robust similarity score.
+41. **Patch** (`patch`): The formal definition — a fixed-size window of pixels used as a pixel's local signature.
+
+### Unit 5 — Image Formation & Enhancement
+42. **Retinex** (`retinex`): Recovering how a surface truly looks regardless of lighting, by separating an image into illumination × reflectance.
+43. **Illumination** (`illumination`): L(x,y) — the slow-varying light falling on a scene, estimated here via wide Gaussian smoothing.
+44. **Reflectance** (`reflectance`): R(x,y) — the surface's own, lighting-independent property, recovered as R = I / L.
+45. **Illumination–Reflectance Model** (`illumination-reflectance-model`): I = L·R, and why taking logarithms turns the product into a separable sum.
+46. **Gamma Correction** (`gamma-correction`): Why brightness needs a nonlinear (not additive) fix, with a live power-law curve and derivative tangent.
+47. **Gamma Transformation** (`gamma-transformation`): s = c·rᵞ derived and probed — γ<1 brightens, γ=1 is identity, γ>1 darkens.
+48. **Power-Law Transformation** (`power-law-transformation`): The general curve family gamma correction belongs to; sweep γ and compare against histogram equalization.
+
+---
+
+The curriculum currently spans **5 units and 48 interactive labs**, from raw pixel sampling through histogram processing, spatial/edge-preserving filtering, and image formation & enhancement (Retinex, gamma).
+
 ---
 
 ## Tech Stack

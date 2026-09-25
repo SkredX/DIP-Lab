@@ -37,6 +37,26 @@ import {
   gaussianSmoothingLab,
   edgeBlurringLab,
 } from './unit3Labs';
+import {
+  bilateralFilteringLab,
+  spatialWeightLab,
+  rangeWeightLab,
+  spatialSigmaLab,
+  rangeSigmaLab,
+  bilateralWeightLab,
+  edgePreservingSmoothingLab,
+  patchBasedComparisonLab,
+  patchLab,
+} from './unit4Labs';
+import {
+  retinexLab,
+  illuminationLab,
+  reflectanceLab,
+  illuminationReflectanceModelLab,
+  gammaCorrectionLab,
+  gammaTransformationLab,
+  powerLawTransformationLab,
+} from './unit5Labs';
 
 export const LAB_MODULES: Record<string, LabModule> = {
   // Unit 1
@@ -76,6 +96,26 @@ export const LAB_MODULES: Record<string, LabModule> = {
   'gaussian-weighting': gaussianWeightingLab,
   'gaussian-smoothing': gaussianSmoothingLab,
   'edge-blurring': edgeBlurringLab,
+
+  // Unit 4
+  'bilateral-filtering': bilateralFilteringLab,
+  'spatial-weight': spatialWeightLab,
+  'range-weight': rangeWeightLab,
+  'spatial-sigma': spatialSigmaLab,
+  'range-sigma': rangeSigmaLab,
+  'bilateral-weight': bilateralWeightLab,
+  'edge-preserving-smoothing': edgePreservingSmoothingLab,
+  'patch-based-comparison': patchBasedComparisonLab,
+  'patch': patchLab,
+
+  // Unit 5
+  'retinex': retinexLab,
+  'illumination': illuminationLab,
+  'reflectance': reflectanceLab,
+  'illumination-reflectance-model': illuminationReflectanceModelLab,
+  'gamma-correction': gammaCorrectionLab,
+  'gamma-transformation': gammaTransformationLab,
+  'power-law-transformation': powerLawTransformationLab,
 };
 
 export function getLabModule(slug: string): LabModule | undefined {
