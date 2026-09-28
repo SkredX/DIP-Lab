@@ -6,6 +6,8 @@ import { AdvancedDrawer } from './AdvancedDrawer';
 import { useAppStore } from '../../state/store';
 import { Step } from '../../engine/math/types';
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RotateCcw, Sparkles, SlidersHorizontal, Image as ImageIcon } from 'lucide-react';
+import { TopicIntro } from '../../content/topicIntros';
+import { TopicIntroCard } from './TopicIntroCard';
 
 interface Preset {
   label: string;
@@ -16,6 +18,7 @@ interface LabLayoutProps {
   unitTitle: string;
   topicTitle: string;
   hook: string;
+  topicIntro?: TopicIntro;
   prevTopic?: { slug: string; title: string };
   nextTopic?: { slug: string; title: string };
   presets?: Preset[];
@@ -33,6 +36,7 @@ export const LabLayout: React.FC<LabLayoutProps> = ({
   unitTitle,
   topicTitle,
   hook,
+  topicIntro,
   prevTopic,
   nextTopic,
   presets,
@@ -121,6 +125,8 @@ export const LabLayout: React.FC<LabLayoutProps> = ({
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-light dark:text-text-dark mt-0.5">{topicTitle}</h1>
             <p className="text-xs sm:text-sm text-text-muted mt-1 max-w-3xl leading-relaxed">{hook}</p>
           </div>
+
+          {topicIntro && <TopicIntroCard intro={topicIntro} />}
 
           <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-3xl p-4 sm:p-6 shadow-sm">
             {childrenStage}

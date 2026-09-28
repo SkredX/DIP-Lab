@@ -67,7 +67,7 @@ interface Cfg {
 
 const make = (c: Cfg): LabModule => ({
   slug: c.slug, params: c.params, presets: c.presets,
-  Stage: ({ params: p, image }) => {
+  Stage: ({ params: p, image, onParamChange }) => {
     const k = c.kernel(p), key = JSON.stringify(k);
     const src = useMemo(() => addNoise(image, p.noise ?? 0), [image, p.noise]);
     const out = useMemo(() => convolve(src, k, true), [src, key]);
@@ -75,11 +75,31 @@ const make = (c: Cfg): LabModule => ({
     const mse = useMemo(() => computeMSEandPSNR(image, out), [image, out]);
     const pt = useMemo(() => patch(src, x, y, k.length), [src, x, y, k.length]);
     const view = c.view ?? 'compare';
+
+    const handleProbeChange = (point: { x: number; y: number }) => {
+      onParamChange?.('px', point.x);
+      onParamChange?.('py', point.y);
+    };
+
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-          <CanvasImage image={src} title={p.noise > 0 ? 'Input f + noise' : 'Input f(x,y)'} />
-          <CanvasImage image={out} title="Output g(x,y)" />
+          <CanvasImage
+            image={src}
+            title={p.noise > 0 ? 'Input f + noise' : 'Input f(x,y)'}
+            probePoint={{ x, y }}
+            kernelSize={k.length}
+            lineProfileY={view === 'profile' ? y : undefined}
+            onProbePointChange={handleProbeChange}
+          />
+          <CanvasImage
+            image={out}
+            title="Output g(x,y)"
+            probePoint={{ x, y }}
+            kernelSize={k.length}
+            lineProfileY={view === 'profile' ? y : undefined}
+            onProbePointChange={handleProbeChange}
+          />
         </div>
         <div className="flex flex-wrap items-start justify-center gap-6">
           {(view === 'patch' || view === 'compare') && <Grid m={pt} title={`Neighbourhood at (${x}, ${y})`} d={0} />}
@@ -88,7 +108,7 @@ const make = (c: Cfg): LabModule => ({
             <LinePlot data={Array.from({ length: 256 }, (_, i) => (gauss2((i / 255) * 10 - 5, 0, p.sigma ?? 1.2) / 0.8) * 255)}
               xLabel="Offset from center (−5 … 5)" yLabel="G(x) (scaled)" showIdentity={false} />)}
           {view === 'profile' && (
-            <LinePlot data={resample(rowOf(src, y))} secondaryData={resample(rowOf(out, y))} xLabel={`Row y = ${y} (orange = filtered)`} yLabel="Intensity" showIdentity={false} />)}
+            <LinePlot data={resample(rowOf(src, y))} secondaryData={resample(rowOf(out, y))} probedX={x} xLabel={`Row y = ${y} (orange = filtered)`} yLabel="Intensity" showIdentity={false} />)}
         </div>
         <p className="text-center text-[11px] font-mono text-text-muted">MSE vs. clean image {f(mse.mse, 1)} · PSNR {Number.isFinite(mse.psnr) ? f(mse.psnr, 1) : '∞'} dB</p>
       </div>
@@ -159,11 +179,16 @@ export const boxFilterLab = make({
 
 // 26. Mean / Averaging Filter
 export const meanFilterLab = make({
-  slug: 'mean-filter', view: 'profile', params: [P.size, P.noise, P.py],
-  presets: [{ label: 'Noisy → 3×3', params: { size: 3, noise: 25 } }, { label: 'Very noisy → 7×7', params: { size: 7, noise: 45 } }],
+  slug: 'mean-filter', view: 'profile', params: [P.size, P.noise, P.px, P.py],
+  presets: [{ label: 'Noisy → 3×3', params: { size: 3, noise: 25, px: 64, py: 64 } }, { label: 'Very noisy → 7×7', params: { size: 7, noise: 45, px: 64, py: 64 } }],
   kernel: (p) => box(p.size ?? 3),
-  explain: (p, adv) => (<><p>The <strong>mean (averaging) filter</strong> replaces each pixel by its neighbourhood average. Random noise cancels out — watch PSNR climb.</p>
-    {adv && <p>Averaging N independent samples cuts noise variance by N: {M('σ² → σ²/n²')}. The price: fine detail blurs too.</p>}</>),
+  explain: (p, adv) => (
+    <>
+      <p>The <strong>mean (averaging) filter</strong> replaces each pixel with the arithmetic average of its {p.size ?? 3}×{p.size ?? 3} neighbourhood. The glowing red dot shows the pixel being calculated.</p>
+      <p>Random sensor noise cancels out because positive and negative spikes average toward zero (noise variance drops by 1/n² = 1/{((p.size ?? 3) ** 2)}). Watch PSNR rise as noise is suppressed, but observe that fine sharp lines also become blurred.</p>
+      {adv && <p>Noise variance cuts by N: {M('σ² → σ²/n²')}. The line profile below plots row Y={p.py ?? 64}: compare noisy blue vs. smoothed orange.</p>}
+    </>
+  ),
   steps: (p, src, k) => { const n = k.length, x = Math.min(src.w - 3, p.px ?? 64), y = Math.min(src.h - 3, p.py ?? 64);
     const v = patch(src, x, y, n).flat(); const m = v.reduce((a, b) => a + b, 0) / v.length;
     return [{ id: 'm', title: 'Mean of the window', latex: `g(x,y)=\\frac{1}{n^2}\\sum f`, substituted: `g=\\frac{${v.reduce((a, b) => a + b, 0)}}{${n * n}}=${f(m, 2)}`, value: m },
@@ -173,29 +198,44 @@ export const meanFilterLab = make({
 // 27. Smoothing
 export const smoothingLab = make({
   slug: 'smoothing', view: 'profile',
-  params: [{ id: 'type', kind: 'select', label: 'Smoother', default: 'gauss', options: [{ value: 'box', label: 'Box' }, { value: 'gauss', label: 'Gaussian' }] }, P.size, P.sigma, P.noise, P.py],
-  presets: [{ label: 'Denoise (Gaussian)', params: { type: 'gauss', size: 7, sigma: 1.5, noise: 30 } }, { label: 'Denoise (Box)', params: { type: 'box', size: 7, noise: 30 } }],
+  params: [{ id: 'type', kind: 'select', label: 'Smoother', default: 'gauss', options: [{ value: 'box', label: 'Box' }, { value: 'gauss', label: 'Gaussian' }] }, P.size, P.sigma, P.noise, P.px, P.py],
+  presets: [{ label: 'Denoise (Gaussian)', params: { type: 'gauss', size: 7, sigma: 1.5, noise: 30, px: 64, py: 64 } }, { label: 'Denoise (Box)', params: { type: 'box', size: 7, noise: 30, px: 64, py: 64 } }],
   kernel: (p) => (p.type === 'box' ? box(p.size ?? 3) : gaussK(p.size ?? 3, p.sigma ?? 1.2)),
-  explain: (p, adv) => (<><p><strong>Smoothing</strong> = low-pass filtering: suppress rapid intensity changes (noise) and keep slow ones. Compare box vs. Gaussian on the same noise.</p>
-    {adv && <p>Every smoother is a low-pass; the trade-off is noise reduction vs. blur. Check the profile plot near an edge.</p>}</>),
+  explain: (p, adv) => (
+    <>
+      <p><strong>Smoothing</strong> acts as a spatial low-pass filter: rapid pixel-to-pixel fluctuations (noise and sharp edges) are attenuated, while slow, broad scene lighting is retained.</p>
+      <p>Compare Box vs. Gaussian at the red probe dot at ({p.px ?? 64}, {p.py ?? 64}): Box smoothing produces rectangular grid artifacts, whereas Gaussian produces smooth, rotationally isotropic transitions.</p>
+      {adv && <p>Every linear smoothing filter incurs a fundamental trade-off: higher noise suppression forces wider edge blurring. Inspect row Y={p.py ?? 64} on the line plot below.</p>}
+    </>
+  ),
 });
 
 // 28. Gaussian Filtering
 export const gaussianFilteringLab = make({
   slug: 'gaussian-filtering', view: 'gauss', params: [P.size, P.sigma, P.noise, P.px, P.py],
-  presets: [{ label: 'Light (σ=0.8)', params: { size: 5, sigma: 0.8 } }, { label: 'Strong (σ=3)', params: { size: 11, sigma: 3 } }],
+  presets: [{ label: 'Light (σ=0.8)', params: { size: 5, sigma: 0.8, px: 64, py: 64 } }, { label: 'Strong (σ=3)', params: { size: 11, sigma: 3, px: 64, py: 64 } }],
   kernel: (p) => gaussK(p.size ?? 3, p.sigma ?? 1.2),
-  explain: (p, adv) => (<><p>A <strong>Gaussian filter</strong> weights neighbours by distance — closer pixels matter more. σ controls how far the influence reaches.</p>
-    {adv && <p>Make the kernel at least ≈ 6σ wide, else it truncates the bell: {M('n ≥ 6σ')}.</p>}</>),
+  explain: (p, adv) => (
+    <>
+      <p>A <strong>Gaussian filter</strong> weights neighbours by physical Euclidean distance from the glowing red probe dot. The center pixel has the strongest vote, and distant pixels taper off according to the bell curve below.</p>
+      <p>Slide <strong>Std. deviation (σ)</strong> to control the bell curve's width. Notice that larger σ spreads the blur over a wider radius without introducing harsh corners.</p>
+      {adv && <p>To prevent truncation artifacts, the kernel size n should be at least 6σ ({M('n ≥ 6σ')}). Current n = {p.size ?? 3}, recommended ≥ {Math.round(6 * (p.sigma ?? 1.2))}.</p>}
+    </>
+  ),
 });
 
 // 29. Gaussian Function
 export const gaussianFunctionLab = make({
   slug: 'gaussian-function', view: 'gauss', params: [P.sigma, P.size, P.px, P.py].map((q) => ({ ...q })),
-  presets: [{ label: 'Narrow σ=0.7', params: { sigma: 0.7, size: 7 } }, { label: 'Wide σ=3', params: { sigma: 3, size: 11 } }],
+  presets: [{ label: 'Narrow σ=0.7', params: { sigma: 0.7, size: 7, px: 64, py: 64 } }, { label: 'Wide σ=3', params: { sigma: 3, size: 11, px: 64, py: 64 } }],
   kernel: (p) => gaussK(p.size ?? 7, p.sigma ?? 1.2),
-  explain: (p, adv) => (<><p>The bell curve behind the filter. Small σ → tall, narrow; large σ → low, wide. Area stays 1.</p>
-    {adv && <p>{M('G(x,y) = (1/2πσ²) e^{−(x²+y²)/2σ²}')}</p>}</>),
+  explain: (p, adv) => (
+    <>
+      <p>The mathematical bell curve behind Gaussian smoothing. Small σ produces a tall, narrow peak (mild, localized blur). Large σ produces a broad, flat curve (wide blur).</p>
+      <p>The total area under the curve is always strictly 1.0, ensuring that the overall average illumination of the scene never artificially darkens or brightens.</p>
+      {adv && <p>{M('G(x,y) = (1/2πσ²) e^{−(x²+y²)/2σ²}')}. Full-Width at Half-Maximum (FWHM) ≈ 2.355σ.</p>}
+    </>
+  ),
   steps: (p) => { const s = p.sigma ?? 1.2, c = 1 / (2 * Math.PI * s * s);
     return [{ id: 'g', title: 'Gaussian function', latex: 'G(x,y)=\\frac{1}{2\\pi\\sigma^2}\\,e^{-\\frac{x^2+y^2}{2\\sigma^2}}' },
       { id: 'c', title: 'Peak value at (0,0)', latex: `G(0,0)=\\frac{1}{2\\pi\\sigma^2}`, substituted: `\\frac{1}{2\\pi(${f(s)})^2}=${f(c, 4)}`, value: c, rationale: 'Shrinking σ raises the peak.' },
@@ -207,10 +247,15 @@ export const gaussianFunctionLab = make({
 export const gaussianWeightingLab = make({
   slug: 'gaussian-weighting', view: 'gauss',
   params: [P.sigma, P.size, { id: 'dx', kind: 'slider', label: 'Neighbour offset Δx', min: -5, max: 5, step: 1, default: 1 }, { id: 'dy', kind: 'slider', label: 'Neighbour offset Δy', min: -5, max: 5, step: 1, default: 1 }, P.px, P.py],
-  presets: [{ label: 'Adjacent (1,0)', params: { dx: 1, dy: 0 } }, { label: 'Far corner (4,4)', params: { dx: 4, dy: 4 } }],
+  presets: [{ label: 'Adjacent (1,0)', params: { dx: 1, dy: 0, px: 64, py: 64 } }, { label: 'Far corner (4,4)', params: { dx: 4, dy: 4, px: 64, py: 64 } }],
   kernel: (p) => gaussK(p.size ?? 7, p.sigma ?? 1.2),
-  explain: (p, adv) => (<><p>Pick a neighbour with Δx, Δy: <strong>greater distance ⇒ smaller weight</strong>. The centre pixel always has the largest vote.</p>
-    {adv && <p>Weights are normalized so they sum to 1, so brightness is preserved.</p>}</>),
+  explain: (p, adv) => (
+    <>
+      <p>Observe how each individual weight in the kernel is calculated. Slide <strong>Neighbour offset Δx</strong> and <strong>Δy</strong>: as distance increases, weight drops off exponentially.</p>
+      <p>The highlighted cell in the kernel grid below shows the exact normalized weight assigned to a neighbour at relative displacement (Δx={p.dx ?? 1}, Δy={p.dy ?? 1}) from the red probe dot.</p>
+      {adv && <p>Distance d = √(Δx² + Δy²). Unnormalized weight w = exp(-d² / 2σ²). Divided by Σw to ensure energy conservation.</p>}
+    </>
+  ),
   steps: (p, _s, k) => { const s = p.sigma ?? 1.2, dx = p.dx ?? 1, dy = p.dy ?? 1, d2 = dx * dx + dy * dy, raw = Math.exp(-d2 / (2 * s * s));
     const c = (k.length - 1) / 2, w = k[Math.max(0, Math.min(k.length - 1, c + dy))]?.[Math.max(0, Math.min(k.length - 1, c + dx))] ?? 0;
     return [{ id: 'd', title: 'Distance²', latex: `d^2=\\Delta x^2+\\Delta y^2`, substituted: `${dx}^2+${dy}^2=${d2}`, value: d2 },
@@ -220,11 +265,16 @@ export const gaussianWeightingLab = make({
 
 // 31. Gaussian Smoothing
 export const gaussianSmoothingLab = make({
-  slug: 'gaussian-smoothing', view: 'profile', params: [P.sigma, P.size, P.noise, P.py],
-  presets: [{ label: 'Denoise σ=1.5', params: { sigma: 1.5, size: 9, noise: 30 } }, { label: 'Heavy σ=3.5', params: { sigma: 3.5, size: 11, noise: 45 } }],
+  slug: 'gaussian-smoothing', view: 'profile', params: [P.sigma, P.size, P.noise, P.px, P.py],
+  presets: [{ label: 'Denoise σ=1.5', params: { sigma: 1.5, size: 9, noise: 30, px: 64, py: 64 } }, { label: 'Heavy σ=3.5', params: { sigma: 3.5, size: 11, noise: 45, px: 64, py: 64 } }],
   kernel: (p) => gaussK(p.size ?? 9, p.sigma ?? 1.5),
-  explain: (p, adv) => (<><p><strong>Gaussian smoothing</strong> removes noise while treating neighbours by distance. Tune σ: too small does little, too large erases detail.</p>
-    {adv && <p>Gaussian blurs compose: two passes with σ₁, σ₂ equal one with {M('√(σ₁²+σ₂²)')}. It is also separable into two 1-D passes.</p>}</>),
+  explain: (p, adv) => (
+    <>
+      <p><strong>Gaussian smoothing</strong> eliminates high-frequency noise spikes while preserving overall regional structure. Move the red probe dot to inspect the before/after intensity at coordinate ({p.px ?? 64}, {p.py ?? 64}).</p>
+      <p>Notice the MSE and PSNR readouts below the stage: as you adjust σ, you will find an optimal trade-off point that maximizes PSNR by removing noise without excessively blurring authentic edges.</p>
+      {adv && <p>2D Gaussian filters are separable: G(x, y) = g(x)·g(y). This allows decomposing an n×n 2D convolution into two 1D passes, dropping complexity from O(n²) to O(2n).</p>}
+    </>
+  ),
   steps: (p) => { const s = p.sigma ?? 1.5, n = p.size ?? 9;
     return [{ id: 's', title: 'Separable form', latex: `G(x,y)=g(x)\\,g(y),\\quad g(t)=\\frac{1}{\\sqrt{2\\pi}\\sigma}e^{-t^2/2\\sigma^2}`, rationale: `One ${n}×${n} pass = two 1-D passes: ${n * n} → ${2 * n} multiplies per pixel.`, value: 2 * n },
       { id: 'w', title: 'Recommended kernel width', latex: `n\\ge 6\\sigma`, substituted: `6\\cdot${f(s)}=${f(6 * s, 1)}\\ \\Rightarrow\\ n=${n}${n >= 6 * s ? '\\ \\checkmark' : '\\ \\text{(truncated!)}'}`, value: 6 * s }]; },
@@ -233,11 +283,16 @@ export const gaussianSmoothingLab = make({
 // 32. Edge Blurring
 export const edgeBlurringLab = make({
   slug: 'edge-blurring', view: 'profile',
-  params: [{ id: 'type', kind: 'select', label: 'Filter', default: 'gauss', options: [{ value: 'box', label: 'Box' }, { value: 'gauss', label: 'Gaussian' }] }, P.size, P.sigma, P.py],
-  presets: [{ label: 'Mild', params: { size: 5, sigma: 1 } }, { label: 'Heavy', params: { size: 11, sigma: 3.5 } }],
+  params: [{ id: 'type', kind: 'select', label: 'Filter', default: 'gauss', options: [{ value: 'box', label: 'Box' }, { value: 'gauss', label: 'Gaussian' }] }, P.size, P.sigma, P.px, P.py],
+  presets: [{ label: 'Mild', params: { size: 5, sigma: 1, px: 64, py: 64 } }, { label: 'Heavy', params: { size: 11, sigma: 3.5, px: 64, py: 64 } }],
   kernel: (p) => (p.type === 'box' ? box(p.size ?? 5) : gaussK(p.size ?? 5, p.sigma ?? 1)),
-  explain: (p, adv) => (<><p>Smoothing has a cost: a sharp dark|bright edge is averaged with both sides and becomes a <strong>ramp</strong>. Scrub the row (Probe y) to an edge and compare orange vs. blue.</p>
-    {adv && <p>Because weights depend only on distance, the filter cannot tell an edge from noise — the motivation for the <em>bilateral</em> filter, which adds an intensity-similarity weight.</p>}</>),
+  explain: (p, adv) => (
+    <>
+      <p><strong>The Price of Smoothing:</strong> Linear spatial filters do not understand content—they only understand spatial distance. When the red probe dot crosses an edge between light and dark objects, neighbours from both sides are averaged together.</p>
+      <p>The profile plot shows the sharp vertical step (blue) degraded into a sloped ramp (orange). The 10%–90% edge rise distance Δ measures this degradation: larger σ makes the edge softer and more blurry.</p>
+      {adv && <p>This fundamental drawback is the exact motivation for Unit 4: Bilateral Filtering, which adds an intensity-similarity weight to stop smoothing from crossing real edges.</p>}
+    </>
+  ),
   steps: (p, src, k) => { const y = Math.min(src.h - 3, p.py ?? 64), a = rowOf(src, y), b = rowOf(convolve(src, k, true), y);
     const wa = edgeWidth(a), wb = edgeWidth(b);
     return [{ id: 'a', title: 'Edge rise distance before', latex: `\\Delta_{10\\text{–}90}=${wa}\\ \\text{px}`, value: wa, rationale: 'Pixels needed to go from 10% to 90% of the step.' },

@@ -70,7 +70,7 @@ interface Cfg {
 
 const make = (c: Cfg): LabModule => ({
   slug: c.slug, params: c.params, presets: c.presets,
-  Stage: ({ params: p, image }) => {
+  Stage: ({ params: p, image, onParamChange }) => {
     const radius = p.radius ?? 2, sigmaS = p.sigmaS ?? 2, sigmaR = p.sigmaR ?? 25;
     const src = useMemo(() => addNoise(image, p.noise ?? 0), [image, p.noise]);
     const out = useMemo(() => bilateralFilter(src, radius, sigmaS, sigmaR), [src, radius, sigmaS, sigmaR]);
@@ -78,13 +78,24 @@ const make = (c: Cfg): LabModule => ({
     const { x, y } = clampP(p, image);
     const mse = useMemo(() => computeMSEandPSNR(image, out), [image, out]);
 
+    const handleProbeChange = (pt: { x: number; y: number }) => {
+      onParamChange?.('px', pt.x);
+      onParamChange?.('py', pt.y);
+    };
+
     if (c.view === 'weights-spatial' || c.view === 'weights-range' || c.view === 'weights-both') {
       const kind = c.view === 'weights-spatial' ? 'spatial' : c.view === 'weights-range' ? 'range' : 'both';
       const g = weightGrid(src, x, y, Math.min(4, radius + 2), sigmaS, sigmaR, kind);
       return (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <CanvasImage image={src} title="Input (probe = centre pixel)" />
+            <CanvasImage
+              image={src}
+              title="Input (red dot = probe location)"
+              probePoint={{ x, y }}
+              kernelSize={g.length}
+              onProbePointChange={handleProbeChange}
+            />
           </div>
           <div className="flex flex-wrap items-start justify-center gap-6">
             <Grid m={patch(src, x, y, g.length)} title={`Neighbourhood values at (${x}, ${y})`} d={0} />
@@ -98,10 +109,31 @@ const make = (c: Cfg): LabModule => ({
       return (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <CanvasImage image={src} title={p.noise > 0 ? 'Input f + noise' : 'Input f(x,y)'} />
-            <CanvasImage image={out} title={`Bilateral output (σₛ=${f(sigmaS)}, σᵣ=${f(sigmaR)})`} />
+            <CanvasImage
+              image={src}
+              title={p.noise > 0 ? 'Input f + noise' : 'Input f(x,y)'}
+              probePoint={{ x, y }}
+              lineProfileY={y}
+              kernelSize={radius * 2 + 1}
+              onProbePointChange={handleProbeChange}
+            />
+            <CanvasImage
+              image={out}
+              title={`Bilateral output (σₛ=${f(sigmaS)}, σᵣ=${f(sigmaR)})`}
+              probePoint={{ x, y }}
+              lineProfileY={y}
+              kernelSize={radius * 2 + 1}
+              onProbePointChange={handleProbeChange}
+            />
           </div>
-          <LinePlot data={resample(rowOf(src, y))} secondaryData={resample(rowOf(out, y))} xLabel={`Row y = ${y} (orange = filtered)`} yLabel="Intensity" showIdentity={false} />
+          <LinePlot
+            data={resample(rowOf(src, y))}
+            secondaryData={resample(rowOf(out, y))}
+            probedX={x}
+            xLabel={`Row y = ${y} (orange = filtered)`}
+            yLabel="Intensity"
+            showIdentity={false}
+          />
           <p className="text-center text-[11px] font-mono text-text-muted">MSE {f(mse.mse, 1)} · PSNR {Number.isFinite(mse.psnr) ? f(mse.psnr, 1) : '∞'} dB</p>
         </div>
       );
@@ -116,10 +148,16 @@ const make = (c: Cfg): LabModule => ({
       const singlePixelDiff = (src.data[y * src.w + x] - src.data[by * src.w + bx]) ** 2;
       return (
         <div className="flex flex-col gap-6">
-          <CanvasImage image={src} title={`Input — patch A at (${x},${y}), patch B at (${bx},${by})`} />
+          <CanvasImage
+            image={src}
+            title={`Input — patch A at (${x},${y}), patch B at (${bx},${by})`}
+            probePoint={{ x, y }}
+            kernelSize={n}
+            onProbePointChange={handleProbeChange}
+          />
           <div className="flex flex-wrap items-start justify-center gap-6">
-            <Grid m={a} title="Patch A" d={0} />
-            <Grid m={b} title="Patch B" d={0} />
+            <Grid m={a} title={`Patch A at (${x},${y})`} d={0} />
+            <Grid m={b} title={`Patch B at (${bx},${by})`} d={0} />
           </div>
           <p className="text-center text-[11px] font-mono text-text-muted">
             Single-pixel squared difference {f(singlePixelDiff, 0)} · Patch SSD {f(ssd, 0)} (averages over {n * n} pixels, far less noise-sensitive)
@@ -132,12 +170,40 @@ const make = (c: Cfg): LabModule => ({
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-          <CanvasImage image={src} title={p.noise > 0 ? 'Input f + noise' : 'Input f(x,y)'} />
-          <CanvasImage image={out} title="Bilateral output" />
-          <CanvasImage image={gauss} title="Gaussian-only (σᵣ→∞)" />
+          <CanvasImage
+            image={src}
+            title={p.noise > 0 ? 'Input f + noise' : 'Input f(x,y)'}
+            probePoint={{ x, y }}
+            lineProfileY={c.view === 'profile' ? y : undefined}
+            kernelSize={radius * 2 + 1}
+            onProbePointChange={handleProbeChange}
+          />
+          <CanvasImage
+            image={out}
+            title="Bilateral output"
+            probePoint={{ x, y }}
+            lineProfileY={c.view === 'profile' ? y : undefined}
+            kernelSize={radius * 2 + 1}
+            onProbePointChange={handleProbeChange}
+          />
+          <CanvasImage
+            image={gauss}
+            title="Gaussian-only (σᵣ→∞)"
+            probePoint={{ x, y }}
+            lineProfileY={c.view === 'profile' ? y : undefined}
+            kernelSize={radius * 2 + 1}
+            onProbePointChange={handleProbeChange}
+          />
         </div>
         {c.view === 'profile' && (
-          <LinePlot data={resample(rowOf(src, y))} secondaryData={resample(rowOf(out, y))} xLabel={`Row y = ${y} (orange = bilateral)`} yLabel="Intensity" showIdentity={false} />
+          <LinePlot
+            data={resample(rowOf(src, y))}
+            secondaryData={resample(rowOf(out, y))}
+            probedX={x}
+            xLabel={`Row y = ${y} (orange = bilateral)`}
+            yLabel="Intensity"
+            showIdentity={false}
+          />
         )}
         <p className="text-center text-[11px] font-mono text-text-muted">Bilateral MSE {f(mse.mse, 1)} · PSNR {Number.isFinite(mse.psnr) ? f(mse.psnr, 1) : '∞'} dB</p>
       </div>
@@ -150,13 +216,18 @@ const make = (c: Cfg): LabModule => ({
 // 33. Bilateral Filtering
 export const bilateralFilteringLab = make({
   slug: 'bilateral-filtering', view: 'compare',
-  params: [P.radius, P.sigmaS, P.sigmaR, P.noise, P.py],
+  params: [P.radius, P.sigmaS, P.sigmaR, P.noise, P.px, P.py],
   presets: [
-    { label: 'Denoise, keep edges', params: { radius: 3, sigmaS: 2.5, sigmaR: 20, noise: 25 } },
-    { label: 'σᵣ→∞ (= Gaussian)', params: { radius: 3, sigmaS: 2.5, sigmaR: 100 } },
+    { label: 'Denoise, keep edges', params: { radius: 3, sigmaS: 2.5, sigmaR: 20, noise: 25, px: 64, py: 64 } },
+    { label: 'σᵣ→∞ (= Gaussian)', params: { radius: 3, sigmaS: 2.5, sigmaR: 100, px: 64, py: 64 } },
   ],
-  explain: (p, adv) => (<><p>A plain Gaussian filter blurs everything the same way. <strong>Bilateral filtering</strong> blurs flat regions but refuses to blur across edges, by giving every neighbour <em>two</em> weights instead of one.</p>
-    {adv && <p>{M('g(i) = Σ w(i,j)·φ(i,j)·f(j) / Σ w(i,j)·φ(i,j)')} — a normalized weighted average where the weight itself depends on both position and intensity.</p>}</>),
+  explain: (p, adv) => (
+    <>
+      <p>A plain Gaussian filter blurs everything indiscriminately. <strong>Bilateral filtering</strong> blurs flat regions to remove noise, but completely refuses to blur across real edges.</p>
+      <p>Move the red probe dot onto a sharp edge: notice that the output remains razor-sharp! Every neighbour receives <em>two</em> weights: how close it is (spatial) AND how similar in brightness it is (range). If a pixel on the other side of the edge is dark while the probe is bright, its weight collapses to near zero.</p>
+      {adv && <p>{M('g(i) = Σ w(i,j)·φ(i,j)·f(j) / Σ w(i,j)·φ(i,j)')} — a normalized weighted average where weights adapt locally to contrast boundaries.</p>}
+    </>
+  ),
   steps: () => [
     { id: 'def', title: 'Bilateral filter output', latex: 'g(i)=\\frac{\\sum_{j\\in N(i)} w_{ij}\\,\\phi_{ij}\\,f(j)}{\\sum_{j\\in N(i)} w_{ij}\\,\\phi_{ij}}',
       rationale: 'A weighted average, exactly like Gaussian smoothing — except the weight has two parts, spatial and range.' },
@@ -168,9 +239,14 @@ export const bilateralFilteringLab = make({
 export const spatialWeightLab = make({
   slug: 'spatial-weight', view: 'weights-spatial',
   params: [P.sigmaS, P.px, P.py],
-  presets: [{ label: 'Narrow σₛ=1', params: { sigmaS: 1 } }, { label: 'Wide σₛ=4', params: { sigmaS: 4 } }],
-  explain: (p, adv) => (<><p>The <strong>spatial weight</strong> only asks: "how far away is this neighbour?" It has nothing to do with brightness — it is the identical Gaussian weight from Unit 3.</p>
-    {adv && <p>{M('w(i,j) = exp(−(i−j)²/2σₛ²)')} — depends purely on pixel position, not on any pixel value.</p>}</>),
+  presets: [{ label: 'Narrow σₛ=1', params: { sigmaS: 1, px: 64, py: 64 } }, { label: 'Wide σₛ=4', params: { sigmaS: 4, px: 64, py: 64 } }],
+  explain: (p, adv) => (
+    <>
+      <p>The <strong>spatial weight</strong> only asks: "how physically far away is this neighbour in pixels?" It has nothing to do with brightness — it is the identical Gaussian distance weight from Unit 3.</p>
+      <p>The glowing red dot marks the reference centre pixel. Notice that moving the probe to an edge does NOT change the spatial weight grid, because geometry alone cannot detect edges.</p>
+      {adv && <p>{M('w(i,j) = exp(−(i−j)²/2σₛ²)')} — strictly isotropic and independent of image intensities.</p>}
+    </>
+  ),
   steps: (p, src) => { const { x, y } = clampP(p, src), s = p.sigmaS ?? 2;
     return [{ id: 'w', title: 'Spatial weight formula', latex: 'w(i,j)=e^{-\\frac{(i-j)^2}{2\\sigma_s^2}}' },
       { id: 'ex', title: 'Adjacent neighbour (offset 1,0)', latex: 'w=e^{-1/(2\\sigma_s^2)}', substituted: `e^{-1/(2\\cdot${f(s)}^2)}=${f(spatialWeight(1, 0, s), 4)}`, value: spatialWeight(1, 0, s) },
@@ -181,9 +257,14 @@ export const spatialWeightLab = make({
 export const rangeWeightLab = make({
   slug: 'range-weight', view: 'weights-range',
   params: [P.sigmaR, P.px, P.py],
-  presets: [{ label: 'Strict σᵣ=10', params: { sigmaR: 10 } }, { label: 'Lenient σᵣ=60', params: { sigmaR: 60 } }],
-  explain: (p, adv) => (<><p>The <strong>range weight</strong> asks a totally different question: "how similar is this neighbour's brightness to the centre pixel?" Try probing a pixel right on an edge — the far side lights up almost 0.</p>
-    {adv && <p>{M('φ(i,j) = exp(−(f(i)−f(j))²/2σᵣ²)')} — a Gaussian in intensity-difference, not position.</p>}</>),
+  presets: [{ label: 'Strict σᵣ=10', params: { sigmaR: 10, px: 64, py: 64 } }, { label: 'Lenient σᵣ=60', params: { sigmaR: 60, px: 64, py: 64 } }],
+  explain: (p, adv) => (
+    <>
+      <p>The <strong>range weight</strong> asks: "how similar is this neighbour's brightness to the center pixel under the red dot?"</p>
+      <p>Move the red probe dot right onto an edge boundary: look at the Range weight grid below! The side matching the red dot receives high weights (~1.0), while the opposite side drops to nearly 0.0, forming a natural boundary fence.</p>
+      {adv && <p>{M('φ(i,j) = exp(−(f(i)−f(j))²/2σᵣ²)')} — a Gaussian function of photometric difference.</p>}
+    </>
+  ),
   steps: (p, src) => { const { x, y } = clampP(p, src), s = p.sigmaR ?? 25, centre = src.data[y * src.w + x];
     return [{ id: 'phi', title: 'Range weight formula', latex: '\\phi(i,j)=e^{-\\frac{(f(i)-f(j))^2}{2\\sigma_r^2}}' },
       { id: 'ex', title: `Neighbour with Δintensity = 2σᵣ`, latex: '\\phi=e^{-(2\\sigma_r)^2/(2\\sigma_r^2)}=e^{-2}', substituted: `\\approx ${f(Math.exp(-2), 4)}`, value: Math.exp(-2), rationale: 'Even a moderately different neighbour is already down-weighted a lot.' },
@@ -193,10 +274,15 @@ export const rangeWeightLab = make({
 // 36. Spatial Standard Deviation σₛ
 export const spatialSigmaLab = make({
   slug: 'spatial-sigma', view: 'sigma-demo',
-  params: [P.sigmaS, { ...P.sigmaR, default: 40 }, P.radius, P.noise, P.py],
-  presets: [{ label: 'Tight σₛ=0.8', params: { sigmaS: 0.8, radius: 2 } }, { label: 'Broad σₛ=4.5', params: { sigmaS: 4.5, radius: 5 } }],
-  explain: (p, adv) => (<><p><strong>σₛ</strong> controls how far the spatial weight reaches — the "radius of influence" in pixels. Small σₛ → only close neighbours matter. Large σₛ → smoothing pulls from farther away.</p>
-    {adv && <p>σₛ means the same thing here as it did for plain Gaussian filtering — bilateral filtering just adds a second σ (σᵣ) alongside it, it doesn't redefine this one.</p>}</>),
+  params: [P.sigmaS, { ...P.sigmaR, default: 40 }, P.radius, P.noise, P.px, P.py],
+  presets: [{ label: 'Tight σₛ=0.8', params: { sigmaS: 0.8, radius: 2, px: 64, py: 64 } }, { label: 'Broad σₛ=4.5', params: { sigmaS: 4.5, radius: 5, px: 64, py: 64 } }],
+  explain: (p, adv) => (
+    <>
+      <p><strong>Spatial σₛ</strong> governs the physical reach (radius of influence in pixels). Small σₛ means only immediate neighbours can influence the probe; large σₛ allows smoothing over larger distances.</p>
+      <p>Move the red probe dot to a noisy flat region: as you increase σₛ, the flat area becomes smoother, but edges continue to stay protected by σᵣ.</p>
+      {adv && <p>Recommended radius r ≥ 3σₛ. At distance d = 3σₛ, spatial weight drops below 0.01.</p>}
+    </>
+  ),
   steps: (p) => { const s = p.sigmaS ?? 2;
     return [{ id: 'w', title: 'σₛ sets the spatial reach', latex: 'w(i,j)=e^{-d^2/2\\sigma_s^2}', rationale: `At d = σₛ = ${f(s)} px, weight ≈ ${f(Math.exp(-0.5), 3)} of its peak; at d = 3σₛ it is nearly 0.` },
       { id: 'width', title: 'Recommended kernel radius', latex: 'r \\ge 3\\sigma_s', substituted: `3\\cdot${f(s)}=${f(3 * s, 1)}\\ \\text{px}`, value: 3 * s }]; },
@@ -205,10 +291,15 @@ export const spatialSigmaLab = make({
 // 37. Range Standard Deviation σᵣ
 export const rangeSigmaLab = make({
   slug: 'range-sigma', view: 'sigma-demo',
-  params: [P.sigmaR, { ...P.sigmaS, default: 2.5 }, P.radius, P.noise, P.py],
-  presets: [{ label: 'Strict σᵣ=8 (preserve edges hard)', params: { sigmaR: 8 } }, { label: 'Lenient σᵣ→∞ = Gaussian', params: { sigmaR: 100 } }],
-  explain: (p, adv) => (<><p><strong>σᵣ</strong> controls how tolerant the filter is to brightness gaps — the "how different is still similar" threshold. Push σᵣ up far enough and the filter stops caring about edges at all.</p>
-    {adv && <p>{M('σᵣ → ∞')} makes φ(i,j) → 1 for every neighbour, so bilateral filtering collapses into a plain Gaussian filter. Bilateral filtering is a strict generalization of Gaussian filtering, not a different family.</p>}</>),
+  params: [P.sigmaR, { ...P.sigmaS, default: 2.5 }, P.radius, P.noise, P.px, P.py],
+  presets: [{ label: 'Strict σᵣ=8 (preserve edges hard)', params: { sigmaR: 8, px: 64, py: 64 } }, { label: 'Lenient σᵣ→∞ = Gaussian', params: { sigmaR: 100, px: 64, py: 64 } }],
+  explain: (p, adv) => (
+    <>
+      <p><strong>Range σᵣ</strong> controls how strict the filter is about intensity differences. Low σᵣ treats even small brightness steps as edges and preserves them. High σᵣ tolerates larger differences.</p>
+      <p>If you push σᵣ all the way to 100 (σᵣ → ∞), the range weight becomes 1 everywhere, and bilateral filtering collapses into standard Gaussian blur!</p>
+      {adv && <p>{M('lim_{σᵣ→∞} φ(i,j) = 1')}. Bilateral filtering is a strict mathematical generalization of Gaussian smoothing.</p>}
+    </>
+  ),
   steps: (p) => { const s = p.sigmaR ?? 25;
     return [{ id: 'phi', title: 'σᵣ sets the brightness tolerance', latex: '\\phi=e^{-\\Delta f^2/2\\sigma_r^2}', rationale: `A neighbour Δf = ${f(s)} away from the centre keeps weight ≈ ${f(Math.exp(-0.5), 3)}; far more different neighbours are suppressed.` },
       { id: 'limit', title: 'The Gaussian limit', latex: '\\lim_{\\sigma_r\\to\\infty}\\phi(i,j)=1', rationale: 'When σᵣ is huge, range weight stops discriminating and only the spatial weight remains — ordinary Gaussian smoothing.' }]; },
@@ -219,8 +310,13 @@ export const bilateralWeightLab = make({
   slug: 'bilateral-weight', view: 'weights-both',
   params: [P.sigmaS, P.sigmaR, P.px, P.py],
   presets: [{ label: 'On a flat region', params: { px: 20, py: 20 } }, { label: 'Right on an edge', params: { px: 64, py: 64 } }],
-  explain: (p, adv) => (<><p>The <strong>bilateral weight</strong> is simply the product: <code>w(i,j) × φ(i,j)</code>. Multiplying (not adding) means a neighbour only contributes strongly if it is <em>both</em> close AND similar — if either weight is small, the combined weight collapses toward zero.</p>
-    {adv && <p>{M('bilateral weight = w(i,j) · φ(i,j)')} — this product is what gets plugged into the normalized weighted average.</p>}</>),
+  explain: (p, adv) => (
+    <>
+      <p>The total bilateral weight is the element-by-element product: <code>W(i, j) = w_s(i, j) × w_r(i, j)</code>. A neighbour must be BOTH close AND similar to contribute.</p>
+      <p>Slide the red probe dot from flat region to an edge: on flat ground the weights form a symmetrical bell; on an edge, the weights lop-side and follow the shape of the object boundary.</p>
+      {adv && <p>{M('bilateral weight = w(i,j) · φ(i,j)')} — the normalized weighted average using this product is what prevents blur bleed.</p>}
+    </>
+  ),
   steps: (p, src) => { const { x, y } = clampP(p, src), ss = p.sigmaS ?? 2, sr = p.sigmaR ?? 25;
     const centre = src.data[y * src.w + x], nv = src.data[y * src.w + Math.min(src.w - 1, x + 1)];
     const ws = spatialWeight(1, 0, ss), wr = rangeWeight(centre, nv, sr);
@@ -231,10 +327,15 @@ export const bilateralWeightLab = make({
 // 39. Edge-Preserving Smoothing
 export const edgePreservingSmoothingLab = make({
   slug: 'edge-preserving-smoothing', view: 'profile',
-  params: [P.radius, P.sigmaS, P.sigmaR, P.py],
-  presets: [{ label: 'Sharp edge kept', params: { radius: 4, sigmaS: 3, sigmaR: 15, py: 64 } }, { label: 'Weak σᵣ → edge blurs', params: { radius: 4, sigmaS: 3, sigmaR: 100, py: 64 } }],
-  explain: (p, adv) => (<><p>This is the payoff. Compare with the Edge Blurring lab in Unit 3 — same kind of step edge, but this time watch the orange (filtered) curve keep its sharp jump instead of turning into a ramp.</p>
-    {adv && <p>Inside a flat region the filter behaves like ordinary Gaussian smoothing (noise removed); across an edge, the range weight collapses so the two sides never get mixed. That combination is "edge-preserving smoothing."</p>}</>),
+  params: [P.radius, P.sigmaS, P.sigmaR, P.px, P.py],
+  presets: [{ label: 'Sharp edge kept', params: { radius: 4, sigmaS: 3, sigmaR: 15, px: 64, py: 64 } }, { label: 'Weak σᵣ → edge blurs', params: { radius: 4, sigmaS: 3, sigmaR: 100, px: 64, py: 64 } }],
+  explain: (p, adv) => (
+    <>
+      <p><strong>Edge-Preserving Payoff:</strong> Compare this profile plot to the Edge Blurring lab from Unit 3. Under bilateral filtering, the orange curve maintains its sharp step edge without flattening into a ramp!</p>
+      <p>Inside the flat regions on either side of the edge, noise is completely wiped clean. Across the edge, the range weight barrier prevents pixel values from bleeding together.</p>
+      {adv && <p>Edge rise distance Δ_10-90 stays unchanged because cross-edge weights evaluate to approximately zero.</p>}
+    </>
+  ),
   steps: (p, src) => { const y = Math.min(src.h - 3, p.py ?? 64), a = rowOf(src, y);
     const out = bilateralFilter(src, p.radius ?? 4, p.sigmaS ?? 3, p.sigmaR ?? 15);
     const b = rowOf(out, y), wa = edgeWidth(a), wb = edgeWidth(b);

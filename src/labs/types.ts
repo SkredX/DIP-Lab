@@ -24,6 +24,7 @@ export interface LabStageProps {
   params: Record<string, any>;
   image: GrayImage;
   onImageChange?: (img: GrayImage) => void;
+  onParamChange?: (id: string, value: any) => void;
   highlightStep?: Step | null;
 }
 

@@ -34,17 +34,21 @@ export const digitalImageLab: LabModule = {
   params: [
     { id: 'resolution', kind: 'slider', label: 'Sampling Grid (N×N)', min: 16, max: 128, step: 16, default: 64, unit: 'px' },
     { id: 'bits', kind: 'slider', label: 'Quantization Depth (k bits)', min: 1, max: 8, step: 1, default: 8, unit: 'bits' },
-    { id: 'showMagnifier', kind: 'toggle', label: 'Pixel Magnifier Lens', default: false, advancedOnly: false },
+    { id: 'px', kind: 'slider', label: 'Probe x', min: 0, max: 127, step: 1, default: 64, unit: 'px' },
+    { id: 'py', kind: 'slider', label: 'Probe y', min: 0, max: 127, step: 1, default: 64, unit: 'px' },
+    { id: 'showMagnifier', kind: 'toggle', label: 'Pixel Magnifier Lens', default: false, advancedOnly: true },
   ],
   presets: [
-    { label: 'High Fidelity', params: { resolution: 128, bits: 8 } },
-    { label: 'Severe Pixelation', params: { resolution: 16, bits: 8 } },
-    { label: 'Extreme 1-Bit', params: { resolution: 64, bits: 1 } },
+    { label: 'High Fidelity', params: { resolution: 128, bits: 8, px: 64, py: 64 } },
+    { label: 'Severe Pixelation', params: { resolution: 16, bits: 8, px: 40, py: 40 } },
+    { label: 'Extreme 1-Bit', params: { resolution: 64, bits: 1, px: 64, py: 64 } },
   ],
-  Stage: ({ params, image }) => {
+  Stage: ({ params, image, onParamChange }) => {
     const res = params.resolution ?? 64;
     const bits = params.bits ?? 8;
     const showMag = params.showMagnifier ?? false;
+    const x = Math.min(image.w - 1, Math.max(0, params.px ?? 64));
+    const y = Math.min(image.h - 1, Math.max(0, params.py ?? 64));
 
     const processed = useMemo(() => {
       const down = resampleImage(image, res, res);
@@ -52,14 +56,26 @@ export const digitalImageLab: LabModule = {
       return resampleImage(quant, 128, 128); // upscale for visual comparison
     }, [image, res, bits]);
 
+    const handleProbeChange = (pt: { x: number; y: number }) => {
+      onParamChange?.('px', pt.x);
+      onParamChange?.('py', pt.y);
+    };
+
     return (
       <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-        <CanvasImage image={image} title="Continuous Analog Scene (High Res)" />
+        <CanvasImage
+          image={image}
+          title="Continuous Analog Scene (High Res)"
+          probePoint={{ x, y }}
+          onProbePointChange={handleProbeChange}
+        />
         <div className="flex flex-col items-center">
           <CanvasImage
             image={processed}
             title={`Sampled (${res}×${res}) & Quantized (${bits}-bit)`}
             showMagnifier={showMag}
+            probePoint={{ x, y }}
+            onProbePointChange={handleProbeChange}
           />
         </div>
       </div>
@@ -245,16 +261,18 @@ export const grayscaleImageLab: LabModule = {
 export const pixelIntensityLab: LabModule = {
   slug: 'pixel-intensity',
   params: [
+    { id: 'probeX', kind: 'slider', label: 'Probe Column (X)', min: 0, max: 127, step: 1, default: 64, unit: 'px' },
     { id: 'profileRow', kind: 'slider', label: 'Scanline Row (Y)', min: 0, max: 127, step: 1, default: 64, unit: 'row' },
     { id: 'offset', kind: 'slider', label: 'Brightness Offset', min: -50, max: 50, step: 5, default: 0 },
   ],
   presets: [
-    { label: 'Midline Profile', params: { profileRow: 64, offset: 0 } },
-    { label: 'Top Highlights', params: { profileRow: 20, offset: 20 } },
-    { label: 'Dark Floor', params: { profileRow: 110, offset: -25 } },
+    { label: 'Midline Profile', params: { probeX: 64, profileRow: 64, offset: 0 } },
+    { label: 'Top Highlights', params: { probeX: 85, profileRow: 20, offset: 20 } },
+    { label: 'Dark Floor', params: { probeX: 30, profileRow: 110, offset: -25 } },
   ],
-  Stage: ({ params, image }) => {
-    const row = params.profileRow ?? 64;
+  Stage: ({ params, image, onParamChange }) => {
+    const row = Math.min(image.h - 1, Math.max(0, params.profileRow ?? 64));
+    const probeX = Math.min(image.w - 1, Math.max(0, params.probeX ?? 64));
     const offset = params.offset ?? 0;
 
     const modifiedImg = useMemo(() => {
@@ -277,19 +295,27 @@ export const pixelIntensityLab: LabModule = {
       return vals;
     }, [modifiedImg, row]);
 
+    const handleProbeChange = (pt: { x: number; y: number }) => {
+      onParamChange?.('probeX', pt.x);
+      onParamChange?.('profileRow', pt.y);
+    };
+
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
           <CanvasImage
             image={modifiedImg}
-            title="Image with Active Scanline"
+            title="Image with Active Scanline & Probe"
             lineProfileY={row}
+            probePoint={{ x: probeX, y: row }}
+            onProbePointChange={handleProbeChange}
           />
           <div className="w-full sm:w-[320px]">
             <LinePlot
               data={rowData}
               xLabel="Horizontal Pixel Position (X)"
               yLabel="Pixel Intensity f(x)"
+              probedX={probeX}
               showIdentity={false}
             />
           </div>
@@ -298,14 +324,21 @@ export const pixelIntensityLab: LabModule = {
     );
   },
   Explain: ({ mode, params }) => {
+    const probeX = params.probeX ?? 64;
+    const row = params.profileRow ?? 64;
     return (
       <>
         <p>
           At its core, a digital image is a 2D spatial function <span className="font-mono text-accent">f(x, y)</span> whose value represents physical optical brightness at coordinate (x, y).
         </p>
         <p>
-          The <strong>line profile plot</strong> cuts horizontally across the image at row {params.profileRow ?? 64}. Peaks correspond to bright structures and valleys correspond to dark shadows.
+          The <strong>glowing red dot</strong> marks the exact probe location at (X={probeX}, Y={row}). The orange horizontal line slices across row Y, and the line profile plot displays that entire row\'s brightness: notice how peaks correspond to bright white highlights and valleys drop down into dark shadows.
         </p>
+        {mode === 'advanced' && (
+          <p className="text-xs text-text-muted">
+            The red marker on the line plot shows the exact intensity sample at column X={probeX}. Drag either slider or click on the image to probe any pixel in real time!
+          </p>
+        )}
       </>
     );
   },

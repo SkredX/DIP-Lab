@@ -77,8 +77,24 @@ const RULES: Rule[] = [
     help: "How much random speckle is added to the test image — higher values simulate a grainier, lower-quality photo.",
   },
   {
-    test: /probe\s*x|probe\s*y|scanline|row\s*\(y\)/i,
-    help: "Picks which pixel, row or column of the image the plot below is currently reading values from.",
+    test: /probe\s*x\b|probe\s*col|^px$/i,
+    help: "Horizontal X position of the moving red probe dot. Sliding this moves the red dot horizontally across the image in real time!",
+  },
+  {
+    test: /probe\s*y\b|scanline|row\s*\(y\)|^py$/i,
+    help: "Vertical Y position of the moving red probe dot. Sliding this moves the red dot vertically across the image in real time!",
+  },
+  {
+    test: /spatial\s*σ|sigmaS\b/i,
+    help: "Spatial reach (in pixels): How far away neighbours can be to influence the filter. Larger values look further across the image.",
+  },
+  {
+    test: /range\s*σ|sigmaR\b/i,
+    help: "Intensity tolerance: How similar in brightness a neighbour must be to be averaged in. Low values preserve sharp edges completely!",
+  },
+  {
+    test: /illumination\s*smoothing|sigmaL\b/i,
+    help: "Width of the Gaussian blur used to estimate lighting (illumination L). Large values remove all surface detail and keep only slow lighting gradients.",
   },
 ];
 

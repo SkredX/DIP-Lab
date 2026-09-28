@@ -11,6 +11,7 @@ import { GrayImage } from '../engine/image/types';
 import { useAppStore } from '../state/store';
 import { Step } from '../engine/math/types';
 import { getParamHelp } from '../utils/paramHelp';
+import { getTopicIntro } from '../content/topicIntros';
 
 export const LabPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -23,6 +24,11 @@ export const LabPage: React.FC = () => {
   const unit = useMemo(
     () => (topicMeta ? UNITS.find((u) => u.id === topicMeta.unitId) : undefined),
     [topicMeta]
+  );
+
+  const topicIntro = useMemo(
+    () => (slug ? getTopicIntro(slug, topicMeta?.title, unit?.title) : undefined),
+    [slug, topicMeta, unit]
   );
 
   // Find prev/next topics in registry order
@@ -143,13 +149,14 @@ export const LabPage: React.FC = () => {
       unitTitle={unit?.title || 'Digital Image Processing'}
       topicTitle={topicMeta.title}
       hook={topicMeta.hook}
+      topicIntro={topicIntro}
       prevTopic={prevTopic ? { slug: prevTopic.slug, title: prevTopic.title } : undefined}
       nextTopic={nextTopic ? { slug: nextTopic.slug, title: nextTopic.title } : undefined}
       presets={labModule.presets}
       onApplyPreset={handleApplyPreset}
       onReset={handleReset}
       steps={steps}
-      childrenStage={<Stage params={params} image={image} onImageChange={setImage} />}
+      childrenStage={<Stage params={params} image={image} onImageChange={setImage} onParamChange={handleParamChange} />}
       childrenControls={
         <div className="space-y-4">
           <div className="space-y-3">

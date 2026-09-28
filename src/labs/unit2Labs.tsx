@@ -814,16 +814,20 @@ export const localVsGlobalLab: LabModule = {
     ], default: 'clahe' },
     { id: 'clipLimit', kind: 'slider', label: 'CLAHE Clip Limit', min: 1.0, max: 4.0, step: 0.5, default: 2.0 },
     { id: 'gridSize', kind: 'slider', label: 'Tile Grid Size', min: 4, max: 16, step: 4, default: 8, unit: 'px' },
+    { id: 'px', kind: 'slider', label: 'Probe x', min: 0, max: 127, step: 1, default: 64, unit: 'px' },
+    { id: 'py', kind: 'slider', label: 'Probe y', min: 0, max: 127, step: 1, default: 64, unit: 'px' },
   ],
   presets: [
-    { label: 'CLAHE Smooth (Grid 8, Clip 2.0)', params: { mode: 'clahe', clipLimit: 2.0, gridSize: 8 } },
-    { label: 'Tiled Seams Visible (No Interp)', params: { mode: 'tiled', clipLimit: 2.0, gridSize: 16 } },
-    { label: 'Global Comparison', params: { mode: 'global', clipLimit: 2.0, gridSize: 8 } },
+    { label: 'CLAHE Smooth (Grid 8, Clip 2.0)', params: { mode: 'clahe', clipLimit: 2.0, gridSize: 8, px: 64, py: 64 } },
+    { label: 'Tiled Seams Visible (No Interp)', params: { mode: 'tiled', clipLimit: 2.0, gridSize: 16, px: 64, py: 64 } },
+    { label: 'Global Comparison', params: { mode: 'global', clipLimit: 2.0, gridSize: 8, px: 64, py: 64 } },
   ],
-  Stage: ({ params, image }) => {
+  Stage: ({ params, image, onParamChange }) => {
     const mode = params.mode ?? 'clahe';
     const clip = params.clipLimit ?? 2.0;
     const grid = params.gridSize ?? 8;
+    const x = Math.min(image.w - 1, Math.max(0, params.px ?? 64));
+    const y = Math.min(image.h - 1, Math.max(0, params.py ?? 64));
 
     const processed = useMemo(() => {
       if (mode === 'global') {
@@ -836,24 +840,41 @@ export const localVsGlobalLab: LabModule = {
       return localEqualize(image, grid, clip, interpolate);
     }, [image, mode, clip, grid]);
 
+    const handleProbeChange = (pt: { x: number; y: number }) => {
+      onParamChange?.('px', pt.x);
+      onParamChange?.('py', pt.y);
+    };
+
     return (
       <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-        <CanvasImage image={image} title="Original Image" />
+        <CanvasImage
+          image={image}
+          title="Original Image"
+          probePoint={{ x, y }}
+          kernelSize={grid}
+          onProbePointChange={handleProbeChange}
+        />
         <CanvasImage
           image={processed}
           title={mode === 'clahe' ? 'CLAHE (Local Adaptive + Bilinear)' : mode === 'tiled' ? 'Tiled Equalization (Tile Seams)' : 'Global Equalization'}
+          probePoint={{ x, y }}
+          kernelSize={grid}
+          onProbePointChange={handleProbeChange}
         />
       </div>
     );
   },
   Explain: ({ mode, params }) => {
+    const px = params.px ?? 64;
+    const py = params.py ?? 64;
+    const grid = params.gridSize ?? 8;
     return (
       <>
         <p>
-          <strong>CLAHE</strong> (Contrast-Limited Adaptive Histogram Equalization) splits the image into small contextual tiles, equalizes each tile locally, clips tall histogram spikes to avoid amplifying noise, and bilinearly blends tile borders to remove seams!
+          <strong>CLAHE</strong> (Contrast-Limited Adaptive Histogram Equalization) splits the image into small contextual tiles (marked by the dashed red box around the glowing red probe dot at ({px}, {py})), equalizes each tile locally, clips histogram spikes to avoid amplifying noise, and bilinearly blends tile borders to remove seams!
         </p>
         <p className="text-xs text-text-muted">
-          Compare <em>CLAHE</em> against <em>Tiled Without Interpolation</em>: notice how bilinear interpolation completely eliminates visible tile borders.
+          Compare <em>CLAHE</em> against <em>Tiled Without Interpolation</em>: notice how without bilinear interpolation, sharp square tile boundaries appear. Move Probe x and Probe y to see how different tiles adapt independently to shadows versus highlights.
         </p>
       </>
     );

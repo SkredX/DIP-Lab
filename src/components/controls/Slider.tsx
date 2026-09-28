@@ -68,6 +68,9 @@ export const Slider: React.FC<SliderProps> = ({
           {unit && <span className="ml-0.5 text-text-muted">{unit}</span>}
         </div>
       </div>
+      {viewMode === 'beginner' && helpText && (
+        <p className="text-[11px] text-text-muted leading-relaxed -mt-0.5 mb-1">{helpText}</p>
+      )}
 
       <div className="relative flex items-center h-8">
         <input
