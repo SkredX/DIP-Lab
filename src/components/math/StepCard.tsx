@@ -57,13 +57,15 @@ export const StepCard: React.FC<StepCardProps> = ({
         <KatexView math={step.latex} displayMode />
       </div>
 
-      {/* Live Substituted Numbers */}
+      {/* Live Substituted Numbers (rendered as typeset math) */}
       {step.substituted && (
-        <div className="mt-2 pt-2 border-t border-dashed border-border-light dark:border-border-dark text-xs font-mono text-accent dark:text-accent-hover bg-accent-light/40 dark:bg-accent-dark/30 p-2 rounded-lg overflow-x-auto">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted block mb-0.5">
-            Live Evaluated:
+        <div className="mt-2 pt-2 border-t border-dashed border-border-light dark:border-border-dark text-accent dark:text-accent-hover bg-accent-light/40 dark:bg-accent-dark/30 px-3 py-2 rounded-lg">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted block mb-0.5 font-mono">
+            Live Evaluated
           </span>
-          {step.substituted}
+          <div className="overflow-x-auto overflow-y-hidden text-center text-sm">
+            <KatexView math={step.substituted} displayMode className="!my-0" />
+          </div>
         </div>
       )}
 

@@ -152,14 +152,7 @@ export const LabPage: React.FC = () => {
       childrenStage={<Stage params={params} image={image} onImageChange={setImage} />}
       childrenControls={
         <div className="space-y-4">
-          <ImagePicker
-            currentPreset={currentPreset}
-            onSelectPreset={handleSelectPreset}
-            onCustomImageLoaded={handleCustomImage}
-            onSelectRealSample={handleSelectRealSample}
-          />
-
-          <div className="pt-2 border-t border-border-light dark:border-border-dark space-y-3">
+          <div className="space-y-3">
             {visibleParams.map((p) => {
               if (p.kind === 'slider') {
                 return (
@@ -220,6 +213,14 @@ export const LabPage: React.FC = () => {
             })}
           </div>
         </div>
+      }
+      childrenImage={
+        <ImagePicker
+            currentPreset={currentPreset}
+            onSelectPreset={handleSelectPreset}
+            onCustomImageLoaded={handleCustomImage}
+            onSelectRealSample={handleSelectRealSample}
+          />
       }
       childrenExplain={<Explain mode={viewMode} params={params} />}
     />

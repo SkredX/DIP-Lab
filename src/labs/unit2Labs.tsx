@@ -253,7 +253,7 @@ export const normalizedHistogramLab: LabModule = {
         id: 'norm-equation',
         title: 'Normalization by Image Dimensions',
         latex: `p(r_k) = \\frac{n_k}{M \\cdot N}`,
-        substituted: `p(r_k) = \\frac{n_k}{${newW} \\times ${newH}} = \\frac{n_k}{${total.toLocaleString()}}`,
+        substituted: `p(r_k) = \\frac{n_k}{${newW} \\times ${newH}} = \\frac{n_k}{${total.toLocaleString().replace(/,/g, '{,}')}}`,
         rationale: 'Scales raw counts into unit-sum probabilities.',
         value: total,
       },
