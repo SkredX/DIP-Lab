@@ -1,3 +1,4 @@
+import { DualViewExplain } from '../components/shell/DualViewExplain';
 import React, { useState, useMemo } from 'react';
 import { LabModule, LabStageProps } from './types';
 import { CanvasImage } from '../components/plots/CanvasImage';
@@ -81,41 +82,55 @@ export const digitalImageLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    const N = params.resolution ?? 64;
-    const k = params.bits ?? 8;
-    const L = Math.pow(2, k);
-
-    if (mode === 'advanced') {
-      return (
-        <>
+  Explain: ({ mode }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
           <p>
-            An analog image <span className="font-mono text-accent">f(x, y)</span> is continuous in both spatial coordinates and amplitude. To process it digitally, two independent discretizations occur:
+            Think of a digital image like a massive mosaic made of tiny square tiles. From far away, it looks like a smooth photograph, but if you get really close, you can see the individual colored blocks!
           </p>
-          <ul className="list-disc list-inside space-y-1 my-1 text-xs">
-            <li><strong>Spatial Sampling:</strong> Discretizes coordinates (x,y) into an N×N grid with interval Δx = W/N.</li>
-            <li><strong>Amplitude Quantization:</strong> Discretizes continuous brightness into L = 2^k discrete levels with step Δ = 256/L.</li>
-          </ul>
-          <p className="text-xs text-text-muted">
-            Reducing N below the Nyquist rate causes spatial aliasing (jagged edges). Reducing k causes intensity posterization (false contours).
+        ),
+        controls: (
+          <p>
+            The controls on the right let you explore the image. When you hover over the image, you'll see exactly which 'tile' (pixel) you are pointing at and its specific position (X and Y coordinates).
           </p>
-        </>
-      );
-    }
-    return (
-      <>
-        <p>
-          Think of a digital camera sensor: it places a grid of tiny light-sensitive buckets (pixels) over the real world.
-        </p>
-        <p>
-          <strong>Sampling</strong> controls how many pixels you have (resolution). <strong>Quantization</strong> controls how many shades of gray each pixel can represent (bits).
-        </p>
-        <p className="text-xs text-accent font-medium">
-          Try setting bits to 1: the image becomes pure black and white!
-        </p>
-      </>
-    );
-  },
+        ),
+        whatToLookFor: (
+          <p>
+            Try moving your mouse across the image. Watch how the <strong>X coordinate</strong> changes as you move left-to-right, and the <strong>Y coordinate</strong> changes as you move up-and-down. Notice that Y=0 is at the very top!
+          </p>
+        ),
+        whyItMatters: (
+          <p>
+            This grid system is how computers understand everything you see on a screen. Every photo you take with your phone is just millions of these little tiles packed tightly together.
+          </p>
+        ),
+      }}
+      advanced={{
+        math: (
+          <p>
+            Formally, a digital image is defined as a 2D discrete function <span className="font-mono text-accent">f(x, y)</span>, where <span className="font-mono text-accent">x</span> and <span className="font-mono text-accent">y</span> are spatial coordinates, and the amplitude of <span className="font-mono text-accent">f</span> at any pair of coordinates is called the intensity or gray level.
+          </p>
+        ),
+        algorithm: (
+          <p>
+            When an image is acquired, it undergoes <em>sampling</em> (digitizing spatial coordinates) and <em>quantization</em> (digitizing amplitude). The resulting array is an <span className="font-mono text-accent">M x N</span> matrix. Time complexity to traverse it is <span className="font-mono text-accent">O(M x N)</span>.
+          </p>
+        ),
+        parameterImpact: (
+          <p>
+            Coordinate systems in image processing typically place the origin <span className="font-mono text-accent">(0,0)</span> at the top-left corner. Spatial resolution dictates how fine the details can be resolved.
+          </p>
+        ),
+        applications: (
+          <p>
+            Digital matrices are the core of all machine vision algorithms. Whether it's satellite imagery (remote sensing) or analyzing CT scans in biomedical engineering, algorithms operate on these matrix structures.
+          </p>
+        ),
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const N = params.resolution ?? 64;
     const k = params.bits ?? 8;
@@ -202,33 +217,55 @@ export const grayscaleImageLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    if (mode === 'advanced') {
-      return (
-        <>
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
           <p>
-            Color images contain a vector of spectral intensities <span className="font-mono text-accent">[R, G, B]^T</span> at each coordinate. Converting to monochrome requires a projection onto a 1D luminance subspace:
+            Imagine you have a single bucket of black paint and a bucket of white paint. A grayscale image is made by mixing these two paints in different amounts for each pixel tile to get different shades of gray.
           </p>
-          <div className="font-mono text-xs bg-surface-mutedLight dark:bg-surface-mutedDark p-2 rounded-lg">
-            Y = w_R \cdot R + w_G \cdot G + w_B \cdot B
-          </div>
-          <p className="text-xs text-text-muted">
-            The standard ITU-R Recommendation BT.601 weights (0.299, 0.587, 0.114) reflect the human eye&apos;s peak photopic spectral sensitivity to green wavelengths.
+        ),
+        controls: (
+          <p>
+            You can use the <strong>Threshold</strong> slider to split the image into just black and white. Anything darker than your threshold becomes pure black, and anything brighter becomes pure white.
           </p>
-        </>
-      );
-    }
-    return (
-      <>
-        <p>
-          A color image has 3 color numbers for every dot: Red, Green, and Blue. Grayscale turns that into just one brightness number.
-        </p>
-        <p>
-          Human eyes are much more sensitive to green than to blue. That is why green gets almost 60% of the weight in standard grayscale conversion!
-        </p>
-      </>
-    );
-  },
+        ),
+        whatToLookFor: (
+          <p>
+            Slowly drag the slider from left to right. Notice how more and more of the image turns black! It's like turning down the lights on the whole picture until everything is swallowed by darkness.
+          </p>
+        ),
+        whyItMatters: (
+          <p>
+            This simple black-and-white trick is incredibly useful. It's how scanners grab text from a printed page without picking up background smudges, and it's a basic step in building Instagram filters!
+          </p>
+        ),
+      }}
+      advanced={{
+        math: (
+          <p>
+            A continuous image function <span className="font-mono text-accent">f(x,y)</span> is converted to a discrete matrix. Grayscale intensity represents the scalar amplitude at each pixel, bounded typically between <span className="font-mono text-accent">[0, L-1]</span> where <span className="font-mono text-accent">L = 2^k</span>.
+          </p>
+        ),
+        algorithm: (
+          <p>
+            Thresholding operation: <span className="font-mono text-accent">g(x,y) = 255</span> if <span className="font-mono text-accent">f(x,y) &gt; T</span> else <span className="font-mono text-accent">0</span>. This involves a simple <span className="font-mono text-accent">O(MN)</span> linear pass over the image matrix.
+          </p>
+        ),
+        parameterImpact: (
+          <p>
+            The choice of threshold <span className="font-mono text-accent">T</span> dictates the segmentation of the image. Small variations in lighting can severely impact fixed-threshold segmentation, often requiring adaptive or Otsu's thresholding methods.
+          </p>
+        ),
+        applications: (
+          <p>
+            Binarization (thresholding) is widely used in OCR (Optical Character Recognition) systems to separate text from background, and in medical imaging to isolate anatomical structures like bones in X-rays.
+          </p>
+        ),
+      }}
+    />
+  ),
   buildSteps: (params) => {
     let wr = params.wR ?? 0.299;
     let wg = params.wG ?? 0.587;
@@ -323,25 +360,55 @@ export const pixelIntensityLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    const probeX = params.probeX ?? 64;
-    const row = params.profileRow ?? 64;
-    return (
-      <>
-        <p>
-          At its core, a digital image is a 2D spatial function <span className="font-mono text-accent">f(x, y)</span> whose value represents physical optical brightness at coordinate (x, y).
-        </p>
-        <p>
-          The <strong>glowing red dot</strong> marks the exact probe location at (X={probeX}, Y={row}). The orange horizontal line slices across row Y, and the line profile plot displays that entire row\'s brightness: notice how peaks correspond to bright white highlights and valleys drop down into dark shadows.
-        </p>
-        {mode === 'advanced' && (
-          <p className="text-xs text-text-muted">
-            The red marker on the line plot shows the exact intensity sample at column X={probeX}. Drag either slider or click on the image to probe any pixel in real time!
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <p>
+            Think of pixel intensity like a volume dial, but instead of sound, it controls brightness. A volume of 0 is pitch black (silence), and max volume is pure blinding white!
           </p>
-        )}
-      </>
-    );
-  },
+        ),
+        controls: (
+          <p>
+            The <strong>Intensity Offset</strong> slider lets you turn the brightness up or down for the entire image at once. It's like adding or taking away a little bit of light everywhere.
+          </p>
+        ),
+        whatToLookFor: (
+          <p>
+            Move the slider up and down. See how adding a positive number washes out the dark areas and makes the bright areas pure white (clipping)? Notice what happens when you subtract!
+          </p>
+        ),
+        whyItMatters: (
+          <p>
+            If you've ever taken a photo on your phone that turned out too dark, tweaking the exposure uses this exact idea—shifting all the intensity values up so you can actually see your friends' faces!
+          </p>
+        ),
+      }}
+      advanced={{
+        math: (
+          <p>
+            Let <span className="font-mono text-accent">r</span> be the original intensity and <span className="font-mono text-accent">s</span> be the transformed intensity. A linear shift is defined as <span className="font-mono text-accent">s = r + C</span>. Due to hardware limits, we apply clamping: <span className="font-mono text-accent">s = max(0, min(255, r + C))</span>.
+          </p>
+        ),
+        algorithm: (
+          <p>
+            The algorithm maps each input pixel to an output pixel. Due to clamping, the operation is irreversible if values exceed the <span className="font-mono text-accent">[0, 255]</span> boundary (loss of information).
+          </p>
+        ),
+        parameterImpact: (
+          <p>
+            A high positive offset saturates pixels to 255 (clipping), destroying high-frequency detail in bright regions. A negative offset clips dark regions to 0, causing crushed shadows.
+          </p>
+        ),
+        applications: (
+          <p>
+            Offset adjustments are primitive forms of exposure compensation in computational photography, often handled in the RAW domain before non-linear gamma compression to preserve dynamic range.
+          </p>
+        ),
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const row = params.profileRow ?? 64;
     const start = row * image.w;
@@ -419,35 +486,55 @@ export const intensityLevelsLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    const k = params.bits ?? 8;
-    const L = Math.pow(2, k);
-    if (mode === 'advanced') {
-      return (
-        <>
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
           <p>
-            An 8-bit image stores intensities using integers in <span className="font-mono text-accent">[0, 255]</span>, providing L = 256 distinct gray levels.
+            Imagine a staircase. A normal image has 256 tiny steps from black to white. But what if we replace those steps with just 4 giant leaps? That's what reducing intensity levels does!
           </p>
+        ),
+        controls: (
           <p>
-            When bit depth k drops below 6 bits (L &lt; 64), smooth gradients break into visible steps—a perceptual artifact called <strong>false contouring</strong> or <strong>posterization</strong>.
+            The <strong>Bit Depth</strong> slider controls how many shades of gray the image is allowed to use. 8 bits means 256 shades, while 2 bits means only 4 shades.
           </p>
-          <p className="text-xs text-text-muted">
-            The staircase plot visualizes the many-to-one quantization mapping <span className="font-mono">s = Q(r)</span>.
+        ),
+        whatToLookFor: (
+          <p>
+            Lower the slider to 2 or 3 bits. See those weird blocky bands of color instead of smooth shading? That's called 'posterization' or 'false contouring' because we don't have enough gray shades to blend smoothly.
           </p>
-        </>
-      );
-    }
-    return (
-      <>
-        <p>
-          Most regular digital photos are <strong>8-bit</strong>, meaning they have 256 shades of gray between black and white.
-        </p>
-        <p>
-          Slide the bit depth down to 3 or 2: notice how smooth skies or gradients break into ugly stripes! This is called banding.
-        </p>
-      </>
-    );
-  },
+        ),
+        whyItMatters: (
+          <p>
+            This is super important for saving internet data! GIF images and old retro video games (like the GameBoy) used very few colors to keep the file size tiny.
+          </p>
+        ),
+      }}
+      advanced={{
+        math: (
+          <p>
+            Quantization assigns a continuous or high-resolution intensity value to one of <span className="font-mono text-accent">L</span> discrete levels, where <span className="font-mono text-accent">L = 2^k</span> and <span className="font-mono text-accent">k</span> is the bit depth. 
+          </p>
+        ),
+        algorithm: (
+          <p>
+            The uniform quantization mapping function divides the dynamic range <span className="font-mono text-accent">[0, 255]</span> into <span className="font-mono text-accent">L</span> uniform intervals. Complexity is <span className="font-mono text-accent">O(1)</span> per pixel.
+          </p>
+        ),
+        parameterImpact: (
+          <p>
+            As <span className="font-mono text-accent">k</span> drops below 5 or 6, visual artifacts known as false contouring appear in smooth gradient regions because the intensity jump between levels exceeds the human visual system's Just Noticeable Difference (JND).
+          </p>
+        ),
+        applications: (
+          <p>
+            Image compression algorithms (like JPEG) heavily rely on quantizing frequency coefficients. Understanding quantization noise is critical in digital communication and sensor hardware design.
+          </p>
+        ),
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const k = params.bits ?? 8;
     const L = Math.pow(2, k);
@@ -544,33 +631,55 @@ export const imageAsMatrixLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    if (mode === 'advanced') {
-      return (
-        <>
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
           <p>
-            Mathematically, a digital image is represented as an M×N matrix of real or integer intensity values:
+            Imagine looking through a magnifying glass at a newspaper photo. Instead of a smooth picture, you see a giant grid of tiny dots with numbers on them. That's exactly how the computer 'sees' the image!
           </p>
-          <div className="py-1">
-            <KatexView math="F = [f(i, j)]_{M \times N}" displayMode />
-          </div>
-          <p className="text-xs text-text-muted">
-            Fundamental image transformations correspond to elementary matrix operations: scalar addition (F + c) shifts brightness, while scalar multiplication (αF) alters contrast.
+        ),
+        controls: (
+          <p>
+            Hover your mouse over the big image to move the 'magnifying glass'. The <strong>Zoom Box</strong> shows you the actual grid of numbers hiding inside the image at that spot.
           </p>
-        </>
-      );
-    }
-    return (
-      <>
-        <p>
-          Under the hood, every image on your screen is just a spreadsheet of numbers between 0 and 255!
-        </p>
-        <p>
-          <strong>Click any box above</strong> to change its number: watch how the pixel immediately changes shade!
-        </p>
-      </>
-    );
-  },
+        ),
+        whatToLookFor: (
+          <p>
+            Find a spot in the image where there's a sharp edge between dark and light. Look at the numbers in the grid—you'll see them jump suddenly from low numbers (dark) to high numbers (bright).
+          </p>
+        ),
+        whyItMatters: (
+          <p>
+            Because an image is just a giant math table (a matrix), programmers can use math to do amazing things, like blurring out license plates or using AI to detect faces!
+          </p>
+        ),
+      }}
+      advanced={{
+        math: (
+          <p>
+            An image is formally a discrete matrix <span className="font-mono text-accent">F in R^(MxN)</span>. Each element <span className="font-mono text-accent">f(x, y)</span> represents the quantized irradiance captured by a sensor photodiode.
+          </p>
+        ),
+        algorithm: (
+          <p>
+            Accessing a neighborhood (like a <span className="font-mono text-accent">3x3</span> region) involves matrix indexing operations <span className="font-mono text-accent">f(x+i, y+j)</span>. Boundary conditions must be handled (padding or mirroring) to prevent out-of-bounds errors.
+          </p>
+        ),
+        parameterImpact: (
+          <p>
+            High frequency spatial transitions (edges) appear as large numerical gradients between adjacent matrix elements. Smooth areas have near-zero local variance.
+          </p>
+        ),
+        applications: (
+          <p>
+            Matrix representations are the foundation of spatial filtering (convolution). Modern convolutional neural networks (CNNs) perform thousands of matrix multiplications per second to extract features from these numerical grids.
+          </p>
+        ),
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const size = params.regionSize ?? 6;
     const shift = params.brightnessShift ?? 0;
@@ -665,35 +774,55 @@ export const intensityTransformationLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    const gamma = params.gamma ?? 0.6;
-    if (mode === 'advanced') {
-      return (
-        <>
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
           <p>
-            Spatial domain point processing applies a mapping function <span className="font-mono text-accent">s = T(r)</span> independently to every pixel.
+            Think of this like a magic translator. For every shade of gray going in (input), it spits out a different shade going out (output). If the translator curve goes up, things get brighter!
           </p>
+        ),
+        controls: (
           <p>
-            The derivative <span className="font-mono">T&apos;(r) = ds/dr</span> dictates local contrast behavior:
+            The <strong>Gamma</strong> slider bends the translator line into a curve. The <strong>Contrast (a)</strong> slider makes the line steeper, stretching the difference between dark and light.
           </p>
-          <ul className="list-disc list-inside space-y-1 my-1 text-xs">
-            <li><strong>T&apos;(r) &gt; 1:</strong> Stretches contrast in that intensity band.</li>
-            <li><strong>T&apos;(r) &lt; 1:</strong> Compresses contrast.</li>
-          </ul>
-        </>
-      );
-    }
-    return (
-      <>
-        <p>
-          An intensity curve maps every brightness level in the original image to a new brightness level.
-        </p>
-        <p>
-          When the curve bows <strong>upward (γ &lt; 1)</strong>, dark shadows get brightened without blowing out highlights. When it bows <strong>downward (γ &gt; 1)</strong>, the image gets darker and more punchy.
-        </p>
-      </>
-    );
-  },
+        ),
+        whatToLookFor: (
+          <p>
+            Make the Gamma curve bow upwards (gamma &lt; 1). See how the dark shadows suddenly light up? The math is taking low input numbers and boosting them up high!
+          </p>
+        ),
+        whyItMatters: (
+          <p>
+            This is exactly how the 'Brightness' and 'Contrast' sliders work on your TV. Gamma correction is also used to fix images so they look correct on different types of screens (like phones vs. monitors).
+          </p>
+        ),
+      }}
+      advanced={{
+        math: (
+          <p>
+            Intensity transformations operate strictly on single pixels: <span className="font-mono text-accent">s = T(r)</span>, where <span className="font-mono text-accent">r</span> is input and <span className="font-mono text-accent">s</span> is output. A power-law (Gamma) transform is <span className="font-mono text-accent">s = c * r^gamma</span>.
+          </p>
+        ),
+        algorithm: (
+          <p>
+            Because <span className="font-mono text-accent">T(r)</span> only depends on the pixel value and not spatial coordinates, it can be optimized using a Look-Up Table (LUT) of size 256. This reduces an <span className="font-mono text-accent">O(MN)</span> floating-point operation to an <span className="font-mono text-accent">O(MN)</span> integer array lookup!
+          </p>
+        ),
+        parameterImpact: (
+          <p>
+            When <span className="font-mono text-accent">gamma &lt; 1</span>, the mapping is compressive at higher intensities and expansive at lower intensities. A steep linear slope increases dynamic contrast but causes saturation (clipping) at the boundaries.
+          </p>
+        ),
+        applications: (
+          <p>
+            Gamma correction compensates for the non-linear luminance response of display hardware (CRTs and LCDs). It's a fundamental part of the sRGB color space pipeline in modern digital imaging.
+          </p>
+        ),
+      }}
+    />
+  ),
   buildSteps: (params) => {
     const type = params.type ?? 'gamma';
     const gamma = params.gamma ?? 0.6;
@@ -781,18 +910,55 @@ export const imageHistogramLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          The <strong>histogram</strong> <span className="font-mono text-accent">h(r_k) = n_k</span> counts how many pixels in the image have gray level <span className="font-mono">r_k</span>.
-        </p>
-        <p>
-          Adjust the <strong>Range Brush sliders</strong>: see the corresponding pixels instantly light up in vibrant green on the image! This connects mathematical distribution directly to spatial content.
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <p>
+            Imagine sorting a giant bucket of mixed change. You make a tall stack of pennies, a medium stack of nickels, and a short stack of quarters. A histogram does exactly this, but with pixel colors!
+          </p>
+        ),
+        controls: (
+          <p>
+            The <strong>Brightness Shift</strong> and <strong>Contrast Mult</strong> sliders let you change the image. Watch how the histogram bars shift and stretch in response.
+          </p>
+        ),
+        whatToLookFor: (
+          <p>
+            Push the brightness up. Notice how the entire 'mountain' of bars moves to the right (towards white)? If an image is too dark, all the bars will be huddled together on the left side!
+          </p>
+        ),
+        whyItMatters: (
+          <p>
+            Professional photographers look at histograms on the back of their cameras all the time! It tells them instantly if a photo is too dark (underexposed) or too bright (overexposed) without needing to guess.
+          </p>
+        ),
+      }}
+      advanced={{
+        math: (
+          <p>
+            A discrete histogram is defined as <span className="font-mono text-accent">h(r_k) = n_k</span>, where <span className="font-mono text-accent">r_k</span> is the <span className="font-mono text-accent">k</span>-th intensity level and <span className="font-mono text-accent">n_k</span> is the number of pixels with that intensity.
+          </p>
+        ),
+        algorithm: (
+          <p>
+            Computing a histogram is a single pass over the image: initialize an array of size <span className="font-mono text-accent">L</span> to zero, and increment the bin for each pixel's intensity. Time complexity is <span className="font-mono text-accent">O(MN)</span>, space is <span className="font-mono text-accent">O(L)</span>.
+          </p>
+        ),
+        parameterImpact: (
+          <p>
+            A brightness shift translates the histogram (convolution with a shifted impulse), while a contrast multiplier dilates or compresses the histogram. Multiplication creates 'gaps' (missing bins) due to discrete quantization.
+          </p>
+        ),
+        applications: (
+          <p>
+            Histograms form the basis of global image enhancement techniques (like Histogram Equalization) and are used as feature descriptors in computer vision (e.g., HOG - Histogram of Oriented Gradients).
+          </p>
+        ),
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const bins = parseInt(params.bins ?? '256', 10);
     const hist = computeHistogram(image, bins);
@@ -889,34 +1055,55 @@ export const intensityProbabilityLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    const N = params.samples ?? 1000;
-    if (mode === 'advanced') {
-      return (
-        <>
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
           <p>
-            By treating intensity <span className="font-mono text-accent">r</span> as a discrete random variable, the normalized histogram represents the true probability mass function:
+            Imagine drawing pixels out of a hat blindly, like lottery balls. If most of the balls in the hat are dark gray, you're most likely to draw a dark gray ball!
           </p>
-          <div className="py-1">
-            <KatexView math="p_r(r_k) = \frac{n_k}{M \cdot N}, \quad \sum p_r(r_k) = 1" displayMode />
-          </div>
-          <p className="text-xs text-text-muted">
-            By the Law of Large Numbers, empirical sampling frequencies converge uniformly to true p_r(r_k) as sample size N → ∞.
+        ),
+        controls: (
+          <p>
+            The <strong>Sample Count</strong> slider controls how many lottery balls we pull from the hat to guess the image's true makeup.
           </p>
-        </>
-      );
-    }
-    return (
-      <>
-        <p>
-          Imagine picking random pixels out of the image blindly like lottery balls.
-        </p>
-        <p>
-          With only 100 samples, the bars look jagged and noisy. As you drag the slider to 5,000 or 10,000 samples, watch the blue bars settle down into the true orange curve!
-        </p>
-      </>
-    );
-  },
+        ),
+        whatToLookFor: (
+          <p>
+            With only 100 samples, the blue bars (our guess) look very jagged and don't match the smooth orange curve (the truth). As you drag the slider to 10,000, watch the blue bars magically settle down perfectly!
+          </p>
+        ),
+        whyItMatters: (
+          <p>
+            This explains why political polls with only 10 people are terribly inaccurate, but polls with 10,000 people are usually spot on! More data means less random noise.
+          </p>
+        ),
+      }}
+      advanced={{
+        math: (
+          <p>
+            Normalizing the histogram yields a Probability Mass Function (PMF): <span className="font-mono text-accent">p(r_k) = n_k / (MN)</span>. The sum of all probabilities must strictly equal <span className="font-mono text-accent">1.0</span> (Probability Axiom).
+          </p>
+        ),
+        algorithm: (
+          <p>
+            Sampling pixels follows a uniform random distribution over spatial coordinates. The empirical distribution <span className="font-mono text-accent">p_hat</span> approaches the true PMF <span className="font-mono text-accent">p</span> as <span className="font-mono text-accent">N approaches infinity</span>.
+          </p>
+        ),
+        parameterImpact: (
+          <p>
+            According to the Law of Large Numbers, the variance of our sample estimate decreases proportional to <span className="font-mono text-accent">1/N</span>. Low sample counts suffer from high variance (noise).
+          </p>
+        ),
+        applications: (
+          <p>
+            Probabilistic image models are critical in Monte Carlo rendering, stochastic noise modeling in sensors, and Bayesian inference techniques for image restoration.
+          </p>
+        ),
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const total = image.w * image.h;
     const trueHist = computeHistogram(image, 256);
@@ -1006,14 +1193,53 @@ export const pdfLab: LabModule = {
     const a = params.boundA ?? 60;
     const b = params.boundB ?? 190;
     return (
-      <>
-        <p>
-          In continuous image theory, the histogram smooths out into a <strong>Probability Density Function (PDF)</strong> <span className="font-mono text-accent">p_r(r)</span>.
-        </p>
-        <p>
-          The probability that a pixel falls between intensities <strong>{a}</strong> and <strong>{b}</strong> is exactly the <strong>shaded area</strong> under the curve!
-        </p>
-      </>
+      <DualViewExplain
+        mode={mode}
+        beginner={{
+          concept: (
+            <p>
+              Imagine melting down the chunky histogram bars into a smooth, continuous hill. This smooth hill is called a Probability Density Function (PDF).
+            </p>
+          ),
+          controls: (
+            <p>
+              The <strong>Lower Bound</strong> and <strong>Upper Bound</strong> sliders let you slice a piece out of the hill, shading the area underneath it.
+            </p>
+          ),
+          whatToLookFor: (
+            <p>
+              Watch the shaded area! If you want to know "What percentage of my image is between shade {a} and {b}?", you just measure the size of that shaded patch under the hill!
+            </p>
+          ),
+          whyItMatters: (
+            <p>
+              This is how Photoshop's 'Select Color Range' tool works. By setting a range, you select a specific 'area under the curve' to grab all the skin tones or sky colors at once.
+            </p>
+          ),
+        }}
+        advanced={{
+          math: (
+            <p>
+              In continuous theory, the histogram becomes a Probability Density Function (PDF) <span className="font-mono text-accent">p_r(r)</span>. The probability of an intensity falling in <span className="font-mono text-accent">[a, b]</span> is the integral: <span className="font-mono text-accent">Integral from a to b of p_r(w) dw</span>.
+            </p>
+          ),
+          algorithm: (
+            <p>
+              To approximate a continuous PDF from discrete data, we apply Kernel Density Estimation (KDE), typically convoluting the histogram with a Gaussian kernel.
+            </p>
+          ),
+          parameterImpact: (
+            <p>
+              The bandwidth parameter <span className="font-mono text-accent">sigma</span> controls the smoothing. A high <span className="font-mono text-accent">sigma</span> over-smooths, losing structural peaks (modes), while a low <span className="font-mono text-accent">sigma</span> leaves the PDF jagged and overfit to the discrete bins.
+            </p>
+          ),
+          applications: (
+            <p>
+              Continuous PDFs are vital in information theory (calculating image entropy) and defining formal transfer functions for histogram specification algorithms.
+            </p>
+          ),
+        }}
+      />
     );
   },
   buildSteps: (params, image) => {
@@ -1099,17 +1325,53 @@ export const cdfLab: LabModule = {
   Explain: ({ mode, params }) => {
     const r = params.probeR ?? 120;
     return (
-      <>
-        <p>
-          The <strong>CDF</strong> <span className="font-mono text-accent">c(r) = P(R ≤ r)</span> is the cumulative running sum of the PDF from 0 up to threshold r.
-        </p>
-        <p>
-          Because probabilities are always non-negative, the CDF is <strong>strictly monotonically increasing</strong> from 0 up to 1.0!
-        </p>
-        <p className="text-xs text-text-muted">
-          Notice how the slope of the CDF is steepest where the PDF is tallest: <span className="font-mono">dc/dr = p(r)</span>.
-        </p>
-      </>
+      <DualViewExplain
+        mode={mode}
+        beginner={{
+          concept: (
+            <p>
+              Imagine walking from left to right, scooping up all the pixels into a bag as you go. The CDF tells you exactly how full your bag is at any given point!
+            </p>
+          ),
+          controls: (
+            <p>
+              The <strong>Threshold Intensity</strong> slider controls how far to the right you walk before checking your bag. The red line shows how the bag gets fuller and fuller.
+            </p>
+          ),
+          whatToLookFor: (
+            <p>
+              Notice that the red line NEVER goes down! Because you're always adding pixels to the bag, the line only climbs up until it hits 100% (or 1.0) on the far right.
+            </p>
+          ),
+          whyItMatters: (
+            <p>
+              This "running total" curve is the secret weapon behind Histogram Equalization, a magic algorithm that automatically fixes low-contrast images (like foggy photos or dark X-rays)!
+            </p>
+          ),
+        }}
+        advanced={{
+          math: (
+            <p>
+              The Cumulative Distribution Function (CDF) <span className="font-mono text-accent">c(r) = P(R &lt;= r)</span> is defined as the definite integral of the PDF from 0 to <span className="font-mono text-accent">r</span>: <span className="font-mono text-accent">c(r) = Integral from 0 to r of p_r(w) dw</span>.
+            </p>
+          ),
+          algorithm: (
+            <p>
+              For discrete images, the CDF is computed using a running prefix sum of the PMF array: <span className="font-mono text-accent">c_k = Sum from j=0 to k of p_r(r_j)</span>. This takes <span className="font-mono text-accent">O(L)</span> time where <span className="font-mono text-accent">L</span> is the number of bins.
+            </p>
+          ),
+          parameterImpact: (
+            <p>
+              Because probabilities are non-negative, the CDF is strictly monotonically non-decreasing. The derivative (slope) of the CDF <span className="font-mono text-accent">dc/dr</span> is exactly the PDF <span className="font-mono text-accent">p(r)</span>.
+            </p>
+          ),
+          applications: (
+            <p>
+              The CDF serves as the optimal transformation function <span className="font-mono text-accent">T(r) = c(r)</span> for Histogram Equalization, which maps the input distribution to an approximately uniform output distribution, maximizing image entropy.
+            </p>
+          ),
+        }}
+      />
     );
   },
   buildSteps: (params, image) => {

@@ -25,6 +25,7 @@ import {
   formatNum,
 } from '../engine/math/stepEngine';
 import { Step } from '../engine/math/types';
+import { DualViewExplain } from '../components/shell/DualViewExplain';
 import { KatexView } from '../components/math/KatexView';
 
 // ==========================================
@@ -94,18 +95,62 @@ export const histogramEqualizationLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          <strong>Histogram Equalization</strong> stretches the intensity levels to span the full dynamic range [0, 255], dramatically boosting contrast in washed-out or dark images.
-        </p>
-        <p>
-          Notice how the mapping allocates more gray levels to populous bins and fewer levels to rare ones. The CDF curve serves directly as the transformation curve!
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <>
+            <p><strong>Histogram Equalization</strong> is like stretching a wrinkled piece of laundry so it's smooth and flat. It takes all the pixel brightness levels and spreads them evenly across the full spectrum from 0 to 255.</p>
+          </>
+        ),
+        controls: (
+          <>
+            <ul>
+              <li><strong>Equalization Blend (α):</strong> Acts like an opacity slider. 100% applies the full stretch, 0% leaves the image as is.</li>
+              <li><strong>Show CDF Overlay:</strong> Shows the cumulative path of pixel brightness (the "S-curve" that serves as the mapping function).</li>
+            </ul>
+          </>
+        ),
+        whatToLookFor: (
+          <>
+            <p>1. Start with the 'Original (0%)' preset to see the washed-out contrast.</p>
+            <p>2. Drag the Blend slider up to 100% and watch how the dense cluster in the histogram spreads outward!</p>
+          </>
+        ),
+        whyItMatters: (
+          <>
+            <p><strong>Night Mode Photography:</strong> Phone cameras use localized equalization to pull detail out of pitch-black shadows without overexposing streetlights.</p>
+          </>
+        )
+      }}
+      advanced={{
+        math: (
+          <>
+            <p>The continuous transformation function is <span className="font-mono text-accent">{`T(r) = (L-1)\int_0^r p_r(w)dw`}</span>.</p>
+            <p>In discrete form, <span className="font-mono text-accent">{`s_k = T(r_k) = (L-1)\sum_{j=0}^k p_r(r_j)`}</span>.</p>
+          </>
+        ),
+        algorithm: (
+          <>
+            <p>1. Compute PMF <span className="font-mono text-accent">{`p_r(r)`}</span> in <span className="font-mono text-accent">{`O(MN)`}</span>.</p>
+            <p>2. Compute CDF in <span className="font-mono text-accent">{`O(L)`}</span>.</p>
+            <p>3. Apply lookup table (LUT) mapping in <span className="font-mono text-accent">{`O(MN)`}</span>.</p>
+          </>
+        ),
+        parameterImpact: (
+          <>
+            <p>The transformation guarantees the output CDF is strictly linear, maximizing entropy <span className="font-mono text-accent">{`H = -\sum p(s)\log p(s)`}</span> for a flat PMF.</p>
+          </>
+        ),
+        applications: (
+          <>
+            <p>Used heavily in <strong>medical radiography</strong> (X-rays) to enhance low-contrast tissue structures for diagnosis.</p>
+          </>
+        )
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const probe = params.probeR ?? 120;
     const total = image.w * image.h;
@@ -165,18 +210,58 @@ export const equalizationMappingLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          The equalization function <span className="font-mono text-accent">T(r) = (L - 1) \int_0^r p_r(w) dw</span> is strictly proportional to the cumulative distribution.
-        </p>
-        <p>
-          By the <strong>Fundamental Theorem of Calculus</strong>, the slope <span className="font-mono">dT/dr = (L - 1) p_r(r)</span>. Wherever the input image has lots of pixels (tall PDF), the curve is steepest, expanding local contrast!
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <>
+            <p>Think of the <strong>Equalization Mapping</strong> like a funhouse mirror for pixels. Where the mirror curves outward rapidly (steep slope), small differences in gray become huge contrast jumps.</p>
+          </>
+        ),
+        controls: (
+          <>
+            <ul>
+              <li><strong>Probe Intensity r:</strong> Moves a flashlight across the input brightness levels to inspect exactly how that specific gray value gets transformed.</li>
+            </ul>
+          </>
+        ),
+        whatToLookFor: (
+          <>
+            <p>1. Move the probe to a tall spike on the left (Input PDF).</p>
+            <p>2. Notice how the mapping curve on the right is steepest exactly at that spot, spreading those pixels apart!</p>
+          </>
+        ),
+        whyItMatters: (
+          <>
+            <p><strong>Airport X-Ray Scanners:</strong> Baggage scanners apply mapping curves that aggressively stretch mid-tones, making subtle density differences (like organic vs inorganic materials) pop out instantly.</p>
+          </>
+        )
+      }}
+      advanced={{
+        math: (
+          <>
+            <p>By the Fundamental Theorem of Calculus, the derivative of the transfer function is proportional to the source PDF: <span className="font-mono text-accent">{`dT/dr = (L-1)p_r(r)`}</span>.</p>
+          </>
+        ),
+        algorithm: (
+          <>
+            <p>The LUT formulation requires evaluating the partial sum. Time complexity is purely bounded by histogram generation <span className="font-mono text-accent">{`O(MN)`}</span>.</p>
+          </>
+        ),
+        parameterImpact: (
+          <>
+            <p>Where <span className="font-mono text-accent">{`p_r(r) \approx 0`}</span>, the derivative <span className="font-mono text-accent">{`dT/dr \approx 0`}</span>, leading to "dead zones" in the output histogram (missing bins).</p>
+          </>
+        ),
+        applications: (
+          <>
+            <p>Foundational in establishing monotonic point operations for multi-spectral satellite imagery to normalize sensor response.</p>
+          </>
+        )
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const probe = params.probeR ?? 110;
     const total = image.w * image.h;
@@ -228,18 +313,59 @@ export const normalizedHistogramLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          Dividing counts by total pixels <span className="font-mono text-accent">M · N</span> yields the normalized histogram <span className="font-mono">p(r_k) = n_k / (M · N)</span>.
-        </p>
-        <p>
-          Toggle <strong>Normalize</strong> on and change the resolution slider: the shape and values of the normalized histogram remain <strong>completely invariant</strong> to image size!
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <>
+            <p>A <strong>Normalized Histogram</strong> is like switching from saying "15 people like apples" to "50% of people like apples". It turns raw pixel counts into percentages (probabilities).</p>
+          </>
+        ),
+        controls: (
+          <>
+            <ul>
+              <li><strong>Resolution Scale:</strong> Shrinks or grows the image size (total number of pixels).</li>
+              <li><strong>Normalize to Probability p(r):</strong> Toggles between showing raw pixel counts and percentage values.</li>
+            </ul>
+          </>
+        ),
+        whatToLookFor: (
+          <>
+            <p>1. Turn off 'Normalize' and change the resolution. See how the Y-axis numbers change drastically.</p>
+            <p>2. Turn 'Normalize' ON and do it again. The Y-axis stays exactly the same!</p>
+          </>
+        ),
+        whyItMatters: (
+          <>
+            <p><strong>Image Recognition AI:</strong> Neural networks need consistent inputs. By normalizing histograms, an AI can recognize the lighting of a scene regardless of whether the photo is 4K or low-res.</p>
+          </>
+        )
+      }}
+      advanced={{
+        math: (
+          <>
+            <p>The normalized PMF is defined as <span className="font-mono text-accent">{`p(r_k) = n_k / (M \cdot N)`}</span>, ensuring <span className="font-mono text-accent">{`\sum_{k=0}^{L-1} p(r_k) = 1`}</span>.</p>
+          </>
+        ),
+        algorithm: (
+          <>
+            <p>Requires an additional pass over the histogram bins <span className="font-mono text-accent">{`O(L)`}</span> to divide by the total area <span className="font-mono text-accent">{`MN`}</span>. Total complexity remains <span className="font-mono text-accent">{`O(MN + L)`}</span>.</p>
+          </>
+        ),
+        parameterImpact: (
+          <>
+            <p>Sub-sampling reduces <span className="font-mono text-accent">{`M \cdot N`}</span> but preserves the statistical distribution of <span className="font-mono text-accent">{`p(r_k)`}</span> assuming the image is wide-sense stationary over space.</p>
+          </>
+        ),
+        applications: (
+          <>
+            <p>Used in <strong>Image retrieval systems (CBIR)</strong> to compute distances (e.g., Bhattacharyya distance) between images independent of their resolution.</p>
+          </>
+        )
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const scale = params.scale ?? 1.0;
     const newW = Math.max(16, Math.round(image.w * scale));
@@ -312,21 +438,58 @@ export const histogramTransformationLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          Applying an intensity mapping <span className="font-mono text-accent">s = T(r)</span> reshapes the histogram according to the change-of-variables theorem:
-        </p>
-        <div className="py-1">
-          <KatexView math="p_s(s) = p_r(r) \cdot \left| \frac{dr}{ds} \right|" displayMode />
-        </div>
-        <p className="text-xs text-text-muted">
-          Where the curve is steep, probability mass is dispersed over many output bins. Where the curve is flat, bins merge together and pile up!
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <>
+            <p><strong>Histogram Transformation</strong> is like reshaping a pile of sand by dragging a tool over it. As you change how bright an input pixel becomes, the entire histogram "pile" shifts and squishes.</p>
+          </>
+        ),
+        controls: (
+          <>
+            <ul>
+              <li><strong>Transformation Exponent (γ):</strong> Bends the mapping curve. γ &lt; 1 lifts shadows, γ &gt; 1 compresses highlights.</li>
+            </ul>
+          </>
+        ),
+        whatToLookFor: (
+          <>
+            <p>1. Select 'Expand Shadows' (γ = 0.5) and watch the dark pixels in the left histogram spread out evenly on the right.</p>
+            <p>2. Notice how flat parts of the curve cause output bins to merge and pile up tall!</p>
+          </>
+        ),
+        whyItMatters: (
+          <>
+            <p><strong>Display Calibration:</strong> Monitors apply physical gamma curves to light output. We do this exact mathematical inverse transformation so the final image looks perfectly natural to human eyes.</p>
+          </>
+        )
+      }}
+      advanced={{
+        math: (
+          <>
+            <p>By the change of variables theorem, <span className="font-mono text-accent">{`p_s(s) = p_r(r) \cdot \left| \frac{dr}{ds} \right|`}</span>.</p>
+          </>
+        ),
+        algorithm: (
+          <>
+            <p>For a non-linear <span className="font-mono text-accent">{`T(r)`}</span>, discrete bins might split or merge. Time complexity is <span className="font-mono text-accent">{`O(MN)`}</span> via LUT.</p>
+          </>
+        ),
+        parameterImpact: (
+          <>
+            <p>When <span className="font-mono text-accent">{`\gamma &gt; 1`}</span>, the derivative <span className="font-mono text-accent">{`ds/dr`}</span> is small near 0, meaning large regions of dark inputs collapse into a single output bin, destroying low-level contrast.</p>
+          </>
+        ),
+        applications: (
+          <>
+            <p>Crucial for <strong>radiometric calibration</strong> in underwater vision to correct for wavelength-dependent attenuation (water absorbs red light faster than blue).</p>
+          </>
+        )
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const gamma = params.gamma ?? 0.7;
     const probeS = params.probeS ?? 128;
@@ -394,18 +557,59 @@ export const inverseHistogramTransformationLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          For a transformation <span className="font-mono text-accent">s = T(r)</span> to be invertible, it must be <strong>strictly monotonically increasing</strong>: <span className="font-mono">T(r_2) &gt; T(r_1)</span> for <span className="font-mono">r_2 &gt; r_1</span>.
-        </p>
-        <p>
-          The inverse curve <span className="font-mono">r = T⁻¹(s)</span> (dashed orange) is the exact reflection of the forward curve (blue) across the identity diagonal!
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <>
+            <p>An <strong>Inverse Transformation</strong> is like having an "Undo" button for your brightness changes. If you darken an image, the inverse function exactly calculates how to brighten it back up to its original state.</p>
+          </>
+        ),
+        controls: (
+          <>
+            <ul>
+              <li><strong>Forward Exponent (γ):</strong> The initial damage/change done to the image.</li>
+              <li><strong>Probe Intensity s:</strong> Pick a spot on the "changed" image to trace it back to its original color.</li>
+            </ul>
+          </>
+        ),
+        whatToLookFor: (
+          <>
+            <p>1. Set γ to a low number. See how the blue curve bows upwards.</p>
+            <p>2. Notice how the dashed orange inverse curve bows downwards—an exact mirror reflection across the diagonal!</p>
+          </>
+        ),
+        whyItMatters: (
+          <>
+            <p><strong>Decryption & Forensics:</strong> When analyzing obfuscated or poorly transmitted satellite signals, engineers must derive and apply a perfect inverse mathematical function to recover the true original signal.</p>
+          </>
+        )
+      }}
+      advanced={{
+        math: (
+          <>
+            <p>The inverse function <span className="font-mono text-accent">{`T^{-1}(s)`}</span> must be single-valued. Thus, <span className="font-mono text-accent">{`T(r)`}</span> must be strictly monotonically increasing: <span className="font-mono text-accent">{`T(r_2) &gt; T(r_1)`}</span> for <span className="font-mono text-accent">{`r_2 &gt; r_1`}</span>.</p>
+          </>
+        ),
+        algorithm: (
+          <>
+            <p>Discrete inversion is <span className="font-mono text-accent">{`O(L)`}</span>: for each <span className="font-mono text-accent">{`r`}</span>, map <span className="font-mono text-accent">{`s = T(r)`}</span>. The inverse table maps <span className="font-mono text-accent">{`LUT_{inv}[s] = r`}</span> with linear interpolation for unmapped bins.</p>
+          </>
+        ),
+        parameterImpact: (
+          <>
+            <p>If quantization occurs before inversion, round-trip error <span className="font-mono text-accent">{`|r - T^{-1}(Q(T(r)))|`}</span> is bounded by the local derivative of the inverse function.</p>
+          </>
+        ),
+        applications: (
+          <>
+            <p>Applied in <strong>HDR imaging pipelines</strong> where raw sensor data is log-encoded, transmitted, and then inverse-transformed before local tone-mapping.</p>
+          </>
+        )
+      }}
+    />
+  ),
   buildSteps: (params) => {
     const gamma = params.gamma ?? 0.6;
     const probeS = params.probeS ?? 140;
@@ -510,18 +714,62 @@ export const histogramMatchingLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          While equalization forces a uniform shape, <strong>Histogram Matching (Specification)</strong> forces the image into <em>any desired custom target distribution</em>!
-        </p>
-        <p>
-          The algorithm equalizes the source <span className="font-mono">s = T(r)</span>, equalizes the target <span className="font-mono">v = G(z)</span>, and then reverses the target map: <span className="font-mono text-accent">z = G⁻¹(T(r))</span>.
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <>
+            <p><strong>Histogram Matching</strong> is like forcing your photo to match a paint swatch book. Instead of just "flattening" everything, you command the image to take on a specific mood—like dark, bright, or split contrast.</p>
+          </>
+        ),
+        controls: (
+          <>
+            <ul>
+              <li><strong>Target Distribution Preset:</strong> Pick the "mood" you want to force onto the image.</li>
+              <li><strong>Matching Strength (α):</strong> Blend between the original image and the fully matched image.</li>
+            </ul>
+          </>
+        ),
+        whatToLookFor: (
+          <>
+            <p>1. Pick the "Dark Mood" preset.</p>
+            <p>2. See how the final histogram shifts all its bulk to the left, actively forcing the bright image into the shadows!</p>
+          </>
+        ),
+        whyItMatters: (
+          <>
+            <p><strong>Cinema Color Grading:</strong> When editing a movie, directors use histogram matching to make a shot filmed at noon look exactly like a shot filmed at dusk, ensuring scene consistency.</p>
+          </>
+        )
+      }}
+      advanced={{
+        math: (
+          <>
+            <p>Matching finds a mapping <span className="font-mono text-accent">{`z = T_{match}(r)`}</span> such that <span className="font-mono text-accent">{`p_z(z) \approx p_{target}(z)`}</span>.</p>
+            <p>Derived via double equalization: <span className="font-mono text-accent">{`z = G^{-1}(T(r))`}</span>.</p>
+          </>
+        ),
+        algorithm: (
+          <>
+            <p>1. Equalize source: <span className="font-mono text-accent">{`s = T(r)`}</span> in <span className="font-mono text-accent">{`O(MN)`}</span>.</p>
+            <p>2. Equalize target: <span className="font-mono text-accent">{`v = G(z)`}</span> in <span className="font-mono text-accent">{`O(L)`}</span>.</p>
+            <p>3. Map source to target: <span className="font-mono text-accent">{`z = G^{-1}(s)`}</span> in <span className="font-mono text-accent">{`O(L)`}</span>.</p>
+          </>
+        ),
+        parameterImpact: (
+          <>
+            <p>Discrete quantization means exact continuous matching is impossible. Bins cannot be split, so the achieved histogram will show localized gaps or spikes compared to the ideal target PDF.</p>
+          </>
+        ),
+        applications: (
+          <>
+            <p>Extensively used in <strong>remote sensing and mosaic stitching</strong> to radiometrically align multi-pass drone imagery before stitching them together.</p>
+          </>
+        )
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const probe = params.probeR ?? 90;
     const hist = computeHistogram(image, 256);
@@ -602,21 +850,60 @@ export const histogramSpecificationLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          In <strong>Histogram Specification</strong>, you design the target profile as a parametric mixture of Gaussians:
-        </p>
-        <div className="py-1">
-          <KatexView math="p_z(z) \propto \sum w_i \exp\left(-\frac{(z - \mu_i)^2}{2\sigma_i^2}\right)" displayMode />
-        </div>
-        <p className="text-xs text-text-muted">
-          Adjust the sliders to shift the peaks around. Digital discretization prevents an exact continuous match, but the general shape is closely reproduced.
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <>
+            <p><strong>Histogram Specification</strong> is taking total control! You are literally drawing the target shape by mixing Gaussian curves (like clay hills) and forcing the image to conform to those hills.</p>
+          </>
+        ),
+        controls: (
+          <>
+            <ul>
+              <li><strong>Gaussian Mode Centers (μ1, μ2):</strong> Moves the "hills" left (darker) or right (brighter).</li>
+              <li><strong>Gaussian Width (σ):</strong> Makes the hills sharper (harsh contrast) or wider (smooth transitions).</li>
+            </ul>
+          </>
+        ),
+        whatToLookFor: (
+          <>
+            <p>1. Move the sliders to create two separate peaks (bimodal).</p>
+            <p>2. The achieved histogram will clump pixels strictly under those two hills, creating a stark, high-contrast look!</p>
+          </>
+        ),
+        whyItMatters: (
+          <>
+            <p><strong>Astrophotography:</strong> When capturing nebulas, scientists specify custom histograms that isolate the black background (peak 1) and stretch the faint starlight (peak 2) to reveal invisible galaxies.</p>
+          </>
+        )
+      }}
+      advanced={{
+        math: (
+          <>
+            <p>The target PDF is formulated as a Gaussian Mixture Model (GMM):</p>
+            <p><span className="font-mono text-accent">{`p_z(z) \propto \sum w_i \exp\left(-\frac{(z - \mu_i)^2}{2\sigma_i^2}\right)`}</span></p>
+          </>
+        ),
+        algorithm: (
+          <>
+            <p>Target CDF requires numerical integration (cumulative sum) of the sampled continuous GMM over <span className="font-mono text-accent">{`[0, 255]`}</span>, followed by <span className="font-mono text-accent">{`O(L)`}</span> normalization.</p>
+          </>
+        ),
+        parameterImpact: (
+          <>
+            <p>If <span className="font-mono text-accent">{`\sigma`}</span> is exceedingly small (Dirac delta approximation), the transformation collapses the image into binary/ternary quantization, drastically reducing entropy.</p>
+          </>
+        ),
+        applications: (
+          <>
+            <p>Used in <strong>infrared thermography</strong> to standardize heat signatures, mapping specific temperature ranges (cold vs hot zones) into specified color bands.</p>
+          </>
+        )
+      }}
+    />
+  ),
   buildSteps: (params) => {
     const p1 = params.peak1 ?? 60;
     const p2 = params.peak2 ?? 190;
@@ -701,18 +988,58 @@ export const cdfMatchingLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          Matching is fundamentally about <strong>lining up cumulative percentiles</strong>.
-        </p>
-        <p>
-          Drag the probe intensity slider: a horizontal ray travels from the source CDF (blue) across to the target CDF (orange), and then drops straight down to determine the new pixel value <span className="font-mono text-accent">z</span>!
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <>
+            <p><strong>CDF Matching</strong> is the secret engine behind histogram matching. It asks: "If a pixel is in the top 10% brightest of the original image, what value represents the top 10% in the target shape?"</p>
+          </>
+        ),
+        controls: (
+          <>
+            <ul>
+              <li><strong>Probe Input Intensity (r):</strong> Moves the crosshair to trace the mathematical path from source, across to target, and down to the output.</li>
+            </ul>
+          </>
+        ),
+        whatToLookFor: (
+          <>
+            <p>1. Drag the probe and watch the staircase line.</p>
+            <p>2. It goes UP from the blue line (finding its percentile), ACROSS to the orange line (finding the matching percentile), and DOWN to get the new pixel value!</p>
+          </>
+        ),
+        whyItMatters: (
+          <>
+            <p><strong>Standardized Testing (Grading on a Curve):</strong> This is exactly how test scores are curved! If you are in the 90th percentile of test-takers (source CDF), you get matched to an 'A' grade (target CDF).</p>
+          </>
+        )
+      }}
+      advanced={{
+        math: (
+          <>
+            <p>The exact mapping resolves to: <span className="font-mono text-accent">{`z = \min \{ z \in [0, L-1] \mid c_{tgt}(z) \ge c_{src}(r) \}`}</span>.</p>
+          </>
+        ),
+        algorithm: (
+          <>
+            <p>Executed via a forward search or binary search on the pre-computed monotonic CDF arrays. In practice, a two-pointer walk completes the LUT in <span className="font-mono text-accent">{`O(L)`}</span> time.</p>
+          </>
+        ),
+        parameterImpact: (
+          <>
+            <p>The inequality <span className="font-mono text-accent">{`\ge`}</span> resolves discrete plateaus in <span className="font-mono text-accent">{`c_{tgt}`}</span>, guaranteeing that all pixels mapping to a flat region in the target CDF collapse to the lowest valid intensity <span className="font-mono text-accent">{`z`}</span>.</p>
+          </>
+        ),
+        applications: (
+          <>
+            <p>Integral to optimal quantization schemes like Lloyd-Max, driving efficient bit-allocation in video compression codecs.</p>
+          </>
+        )
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     const probe = params.probeR ?? 85;
     const srcHist = computeHistogram(image, 256);
@@ -776,18 +1103,59 @@ export const globalHistogramProcessingLab: LabModule = {
       </div>
     );
   },
-  Explain: ({ mode, params }) => {
-    return (
-      <>
-        <p>
-          <strong>Global processing</strong> uses one single transformation function for every single pixel in the entire image, completely ignoring spatial location.
-        </p>
-        <p>
-          In scenes with mixed bright spots and deep shadows (like a flashlight or sunny window), global equalization over-amplifies noise in background areas and washes out bright areas!
-        </p>
-      </>
-    );
-  },
+  Explain: ({ mode, params }) => (
+    <DualViewExplain
+      mode={mode}
+      beginner={{
+        concept: (
+          <>
+            <p><strong>Global Processing</strong> is a "one-size-fits-all" approach. It applies the exact same brightness rule to every pixel, whether that pixel is in a pitch-black shadow or staring straight into the sun.</p>
+          </>
+        ),
+        controls: (
+          <>
+            <ul>
+              <li><strong>Global Operation:</strong> Try different one-size-fits-all rules.</li>
+              <li><strong>Highlight Over/Under-Exposed:</strong> Turns problem areas bright green so you can see where the algorithm destroyed detail.</li>
+            </ul>
+          </>
+        ),
+        whatToLookFor: (
+          <>
+            <p>1. Select 'Global Equalization' and turn on the highlight toggle.</p>
+            <p>2. Notice how massive chunks of the image turn green—the dark areas were brightened nicely, but the already-bright areas got blown out entirely!</p>
+          </>
+        ),
+        whyItMatters: (
+          <>
+            <p><strong>Flash Photography Flaws:</strong> When taking a flash photo indoors, the subject is bright but the room is dark. Global edits will either ruin the subject to fix the room, or ruin the room to fix the subject.</p>
+          </>
+        )
+      }}
+      advanced={{
+        math: (
+          <>
+            <p>The transformation is spatially invariant: <span className="font-mono text-accent">{`g(x, y) = T(f(x, y)) \quad \forall (x, y) \in M \times N`}</span>.</p>
+          </>
+        ),
+        algorithm: (
+          <>
+            <p>Calculates a single LUT based on the global PDF. Space complexity is merely <span className="font-mono text-accent">{`O(L)`}</span> memory footprint for the transformation array.</p>
+          </>
+        ),
+        parameterImpact: (
+          <>
+            <p>Bimodal lighting conditions cause the global CDF to have massive jumps, resulting in a steep <span className="font-mono text-accent">{`T(r)`}</span> that forcefully clips intermediate local textures into saturation bounds (0 or 255).</p>
+          </>
+        ),
+        applications: (
+          <>
+            <p>Used primarily as a pre-processing step in <strong>OCR (Optical Character Recognition)</strong> pipelines for flat-lit document scans where spatial lighting variation is strictly zero.</p>
+          </>
+        )
+      }}
+    />
+  ),
   buildSteps: (params, image) => {
     return [
       {
@@ -867,16 +1235,60 @@ export const localVsGlobalLab: LabModule = {
   Explain: ({ mode, params }) => {
     const px = params.px ?? 64;
     const py = params.py ?? 64;
-    const grid = params.gridSize ?? 8;
     return (
-      <>
-        <p>
-          <strong>CLAHE</strong> (Contrast-Limited Adaptive Histogram Equalization) splits the image into small contextual tiles (marked by the dashed red box around the glowing red probe dot at ({px}, {py})), equalizes each tile locally, clips histogram spikes to avoid amplifying noise, and bilinearly blends tile borders to remove seams!
-        </p>
-        <p className="text-xs text-text-muted">
-          Compare <em>CLAHE</em> against <em>Tiled Without Interpolation</em>: notice how without bilinear interpolation, sharp square tile boundaries appear. Move Probe x and Probe y to see how different tiles adapt independently to shadows versus highlights.
-        </p>
-      </>
+      <DualViewExplain
+        mode={mode}
+        beginner={{
+          concept: (
+            <>
+              <p><strong>CLAHE (Adaptive Local Equalization)</strong> is the smart solution. Instead of one rule for the whole image, it divides the image into a grid of tiny tiles and calculates a custom contrast rule for each tile individually.</p>
+            </>
+          ),
+          controls: (
+            <>
+              <ul>
+                <li><strong>Processing Algorithm:</strong> Compare CLAHE (smooth), Tiled (blocky), and Global (washed out).</li>
+                <li><strong>Tile Grid Size:</strong> How small the contextual blocks should be.</li>
+                <li><strong>CLAHE Clip Limit:</strong> Prevents pure noise (like a flat gray sky) from being over-amplified.</li>
+              </ul>
+            </>
+          ),
+          whatToLookFor: (
+            <>
+              <p>1. Switch to 'Tiled Without Interpolation' and observe the grid lines (seams).</p>
+              <p>2. Switch back to 'CLAHE'—it uses smart blending (interpolation) to melt those seams away!</p>
+            </>
+          ),
+          whyItMatters: (
+            <>
+              <p><strong>Medical MRI & Ultrasound:</strong> Doctors rely on CLAHE. It reveals hidden tumors in dark tissue regions without destroying the bright bone structures right next to them.</p>
+            </>
+          )
+        }}
+        advanced={{
+          math: (
+            <>
+              <p>Bilinear tile interpolation for a pixel at normalized coordinate <span className="font-mono text-accent">{`(s, t)`}</span>:</p>
+              <p><span className="font-mono text-accent">{`f(x, y) = (1-s)(1-t) T_{TL} + s(1-t) T_{TR} + (1-s)t T_{BL} + st T_{BR}`}</span></p>
+            </>
+          ),
+          algorithm: (
+            <>
+              <p>Complexity increases to <span className="font-mono text-accent">{`O(MN + (M/B)(N/B)L)`}</span> where <span className="font-mono text-accent">{`B`}</span> is the tile block size. The clipping mechanism redistributes excess probability mass equally across all <span className="font-mono text-accent">{`L`}</span> bins.</p>
+            </>
+          ),
+          parameterImpact: (
+            <>
+              <p>A higher Clip Limit behaves closer to pure local AHE (noise amplification). As Grid Size approaches <span className="font-mono text-accent">{`M \times N`}</span>, the algorithm converges back to Global Equalization.</p>
+            </>
+          ),
+          applications: (
+            <>
+              <p>Crucial for <strong>underwater robot vision</strong> to counter extreme non-uniform illumination scattering, and in autonomous vehicle pipelines to handle stark headlight/shadow contrasts.</p>
+            </>
+          )
+        }}
+      />
     );
   },
   buildSteps: (params, image) => {

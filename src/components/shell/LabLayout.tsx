@@ -220,10 +220,18 @@ export const LabLayout: React.FC<LabLayoutProps> = ({
             )}
 
             {/* Explanation */}
-            <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-3xl p-4 shadow-sm space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted pb-1 border-b border-border-light dark:border-border-dark flex items-center justify-between">
-                <span>{viewMode === 'advanced' ? 'Formal Foundations' : 'Core Intuition'}</span>
-                <span className="text-[10px] lowercase font-normal px-2 py-0.5 rounded-full bg-surface-mutedLight dark:bg-surface-mutedDark">{viewMode}</span>
+            <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted pb-2 border-b border-border-light dark:border-border-dark flex items-center justify-between">
+                <span className="flex items-center gap-1.5 font-bold text-text-light dark:text-text-dark">
+                  {viewMode === 'advanced' ? (
+                    <><span>🔬</span> Advanced View · Deep Dive</>
+                  ) : (
+                    <><span>🐣</span> Beginner View · Core Intuition</>
+                  )}
+                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-surface-mutedLight dark:bg-surface-mutedDark border border-border-light dark:border-border-dark">
+                  {viewMode}
+                </span>
               </h2>
               <div className="text-xs sm:text-sm text-text-light dark:text-text-dark leading-relaxed space-y-2.5">{childrenExplain}</div>
             </div>

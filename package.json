@@ -22,6 +22,8 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "@babel/plugin-syntax-jsx": "^8.0.1",
+    "@babel/preset-typescript": "^8.0.1",
     "@types/katex": "^0.16.7",
     "@types/node": "^22.5.4",
     "@types/react": "^18.3.5",

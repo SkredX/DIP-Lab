@@ -60,32 +60,32 @@ export const TopBar: React.FC<TopBarProps> = ({ unitTitle, topicTitle }) => {
         {/* Right: Beginner ⇄ Advanced Segmented Control + Theme */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Segmented View Mode Toggle */}
-          <div className="inline-flex p-0.5 rounded-xl bg-surface-mutedLight dark:bg-surface-mutedDark border border-border-light dark:border-border-dark">
+          <div className="inline-flex p-0.5 rounded-xl bg-surface-mutedLight dark:bg-surface-mutedDark border border-border-light dark:border-border-dark shadow-xs">
             <button
               type="button"
               onClick={() => viewMode !== 'beginner' && toggleViewMode()}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all ${
                 viewMode === 'beginner'
                   ? 'bg-surface-light dark:bg-surface-dark text-text-light dark:text-text-dark font-semibold shadow-sm border border-border-light/60 dark:border-border-dark/60'
                   : 'text-text-muted hover:text-text-light dark:hover:text-text-dark'
               }`}
-              title="Intuition first, clean controls, no clutter"
+              title="Intuition first, real-world analogies, step-by-step visual experiments (Key: A)"
             >
-              <BookOpen className="w-3.5 h-3.5 text-accent" />
-              <span>Beginner</span>
+              <span>🐣</span>
+              <span className="font-medium">Beginner View</span>
             </button>
             <button
               type="button"
               onClick={() => viewMode !== 'advanced' && toggleViewMode()}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all ${
                 viewMode === 'advanced'
                   ? 'bg-surface-light dark:bg-surface-dark text-accent font-semibold shadow-sm border border-border-light/60 dark:border-border-dark/60'
                   : 'text-text-muted hover:text-text-light dark:hover:text-text-dark'
               }`}
-              title="Full math derivations, proofs, advanced sliders (Key: A)"
+              title="Mathematical formulations, algorithmic complexity, industrial applications (Key: A)"
             >
-              <GraduationCap className="w-3.5 h-3.5" />
-              <span>Advanced</span>
+              <span>🔬</span>
+              <span className="font-medium">Advanced View</span>
             </button>
           </div>
 
